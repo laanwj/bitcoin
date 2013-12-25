@@ -12,11 +12,13 @@
 #include <QClipboard>
 
 SendCoinsEntry::SendCoinsEntry(QWidget *parent) :
-    QFrame(parent),
+    QStackedWidget(parent),
     ui(new Ui::SendCoinsEntry),
     model(0)
 {
     ui->setupUi(this);
+
+    setCurrentWidget(ui->SendCoinsInsecure);
 
 #ifdef Q_OS_MAC
     ui->payToLayout->setSpacing(4);
@@ -127,6 +129,10 @@ bool SendCoinsEntry::validate()
 
 SendCoinsRecipient SendCoinsEntry::getValue()
 {
+    if (!recipient.authenticatedMerchant.isEmpty())
+        return recipient;
+
+    // User-entered or non-authenticated:
     SendCoinsRecipient rv;
 
     rv.address = ui->payTo->text();
@@ -148,9 +154,22 @@ QWidget *SendCoinsEntry::setupTabChain(QWidget *prev)
 
 void SendCoinsEntry::setValue(const SendCoinsRecipient &value)
 {
+    recipient = value;
+
     ui->payTo->setText(value.address);
     ui->addAsLabel->setText(value.label);
     ui->payAmount->setValue(value.amount);
+
+    if (!recipient.authenticatedMerchant.isEmpty())
+    {
+        const payments::PaymentDetails& details = value.paymentRequest.getDetails();
+
+        ui->payTo_s->setText(value.authenticatedMerchant + QString(" (") + value.address + QString(")"));
+        ui->memo_s->setTextFormat(Qt::PlainText);
+        ui->memo_s->setText(QString::fromStdString(details.memo()));
+        ui->payAmount_s->setValue(value.amount);
+        setCurrentWidget(ui->SendCoinsSecure);
+    }
 }
 
 void SendCoinsEntry::setAddress(const QString &address)

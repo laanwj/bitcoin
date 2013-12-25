@@ -293,7 +293,7 @@ public:
         return boost::apply_visitor(CBitcoinAddressVisitor(this), dest);
     }
 
-    bool IsValid() const
+    bool IsValid(bool forTestNet) const
     {
         unsigned int nExpectedSize = 20;
         bool fExpectTestNet = false;
@@ -320,8 +320,9 @@ public:
             default:
                 return false;
         }
-        return fExpectTestNet == fTestNet && vchData.size() == nExpectedSize;
+        return fExpectTestNet == forTestNet && vchData.size() == nExpectedSize;
     }
+    bool IsValid() const { return IsValid(fTestNet); }
 
     CBitcoinAddress()
     {

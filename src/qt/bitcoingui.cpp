@@ -722,7 +722,8 @@ void BitcoinGUI::dropEvent(QDropEvent *event)
         QList<QUrl> uris = event->mimeData()->urls();
         foreach(const QUrl &uri, uris)
         {
-            if (walletFrame->handleURI(uri.toString()))
+            SendCoinsRecipient r;
+            if (GUIUtil::parseBitcoinURI(uri, &r) && walletFrame->handlePaymentRequest(r))
                 nValidUrisFound++;
         }
 
@@ -749,12 +750,18 @@ bool BitcoinGUI::eventFilter(QObject *object, QEvent *event)
     return QMainWindow::eventFilter(object, event);
 }
 
-void BitcoinGUI::handleURI(QString strURI)
+void BitcoinGUI::handlePaymentRequest(const SendCoinsRecipient& recipient)
 {
     // URI has to be valid
-    if (!walletFrame->handleURI(strURI))
-        message(tr("URI handling"), tr("URI can not be parsed! This can be caused by an invalid Bitcoin address or malformed URI parameters."),
-                  CClientUIInterface::ICON_WARNING);
+    if (!walletFrame->handlePaymentRequest(recipient))
+        message(tr("Payment Request handling"),
+                tr("Payment request can not be parsed! This can be caused by an invalid Bitcoin address or malformed URI parameters."),
+                CClientUIInterface::ICON_WARNING);
+}
+
+void BitcoinGUI::showPaymentACK(QString msg)
+{
+    message(tr("Payment received"), msg, CClientUIInterface::MODAL);
 }
 
 void BitcoinGUI::setEncryptionStatus(int status)

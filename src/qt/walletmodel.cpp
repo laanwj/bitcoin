@@ -127,8 +127,9 @@ bool WalletModel::validateAddress(const QString &address)
 WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipient> &recipients)
 {
     qint64 total = 0;
-    QSet<QString> setAddress;
-    QString hex;
+    QSet<QString> setAddress; // Used to detect duplicates
+    std::vector<std::pair<CScript, int64> > vecSend;
+    QByteArray transaction;
 
     if(recipients.empty())
     {
@@ -138,20 +139,46 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
     // Pre-check input data for validity
     foreach(const SendCoinsRecipient &rcp, recipients)
     {
-        if(!validateAddress(rcp.address))
-        {
-            return InvalidAddress;
-        }
         setAddress.insert(rcp.address);
 
-        if(rcp.amount <= 0)
-        {
-            return InvalidAmount;
+        if (rcp.paymentRequest.IsInitialized())
+        {    // PaymentRequest...
+            int64 subtotal = 0;
+            const payments::PaymentDetails& details = rcp.paymentRequest.getDetails();
+            for (int i = 0; i < details.outputs_size(); i++)
+            {
+                const payments::Output& out = details.outputs(i);
+                if (out.amount() <= 0) continue;
+                subtotal += out.amount();
+                const unsigned char* scriptStr = (const unsigned char*)out.script().data();
+                CScript scriptPubKey(scriptStr, scriptStr+out.script().size());
+                vecSend.push_back(std::pair<CScript, int64>(scriptPubKey, out.amount()));
+            }
+            if (subtotal <= 0)
+            {
+                return InvalidAmount;
+            }
+            total += subtotal;
         }
-        total += rcp.amount;
-    }
+        else
+        {   // User-entered bitcoin address / amount:
+            if(!validateAddress(rcp.address))
+            {
+                return InvalidAddress;
+            }
+            if(rcp.amount <= 0)
+            {
+                return InvalidAmount;
+            }
 
-    if(recipients.size() > setAddress.size())
+            CScript scriptPubKey;
+            scriptPubKey.SetDestination(CBitcoinAddress(rcp.address.toStdString()).Get());
+            vecSend.push_back(std::pair<CScript, int64>(scriptPubKey, rcp.amount));
+
+            total += rcp.amount;
+        }
+    }
+    if(setAddress.size() != recipients.size())
     {
         return DuplicateAddress;
     }
@@ -169,19 +196,10 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
     {
         LOCK2(cs_main, wallet->cs_wallet);
 
-        // Sendmany
-        std::vector<std::pair<CScript, int64> > vecSend;
-        foreach(const SendCoinsRecipient &rcp, recipients)
-        {
-            CScript scriptPubKey;
-            scriptPubKey.SetDestination(CBitcoinAddress(rcp.address.toStdString()).Get());
-            vecSend.push_back(make_pair(scriptPubKey, rcp.amount));
-        }
-
-        CWalletTx wtx;
         CReserveKey keyChange(wallet);
         int64 nFeeRequired = 0;
         std::string strFailReason;
+        CWalletTx wtx;
         bool fCreated = wallet->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, strFailReason);
 
         if(!fCreated)
@@ -202,10 +220,15 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
         {
             return TransactionCommitFailed;
         }
-        hex = QString::fromStdString(wtx.GetHash().GetHex());
+
+        CTransaction* t = (CTransaction*)&wtx;
+        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+        ssTx << *t;
+        transaction.append(&(ssTx[0]), ssTx.size());
     }
 
-    // Add addresses / update labels that we've sent to to the address book
+    // Add addresses / update labels that we've sent to to the address book,
+    // and emit coinsSent signal
     foreach(const SendCoinsRecipient &rcp, recipients)
     {
         std::string strAddress = rcp.address.toStdString();
@@ -222,9 +245,10 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
                 wallet->SetAddressBookName(dest, strLabel);
             }
         }
+        emit coinsSent(wallet, rcp, transaction);
     }
 
-    return SendCoinsReturn(OK, 0, hex);
+    return SendCoinsReturn(OK, 0);
 }
 
 OptionsModel *WalletModel::getOptionsModel()
