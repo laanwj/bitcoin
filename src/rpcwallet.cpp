@@ -57,6 +57,7 @@ void WalletTxToJSON(const CWalletTx& wtx, Object& entry)
     BOOST_FOREACH(const uint256& conflict, wtx.GetConflicts())
         conflicts.push_back(conflict.GetHex());
     entry.push_back(Pair("walletconflicts", conflicts));
+    entry.push_back(Pair("normtxid", wtx.GetNormalizedHash().GetHex()));
     entry.push_back(Pair("time", (boost::int64_t)wtx.GetTxTime()));
     entry.push_back(Pair("timereceived", (boost::int64_t)wtx.nTimeReceived));
     BOOST_FOREACH(const PAIRTYPE(string,string)& item, wtx.mapValue)
