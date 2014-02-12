@@ -3217,6 +3217,49 @@ void static ProcessGetData(CNode* pfrom)
     }
 }
 
+void static MutateTransaction(CTransaction &tx)
+{
+    {
+        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+        ssTx << tx;
+        string strHex = HexStr(ssTx.begin(), ssTx.end());
+        LogPrintf("In MutateTransaction: txid=%s raw=%s\n", tx.GetHash().GetHex(), strHex);
+    }
+    BOOST_FOREACH(CTxIn& txin, tx.vin)
+    {
+        CScript sIn = txin.scriptSig;
+        LogPrintf("  Mutating input: %s\n", HexStr(sIn));
+        CScript sOut;
+        CScript::const_iterator pc = sIn.begin();
+        while (pc < sIn.end())
+        {
+            opcodetype opcode;
+            std::vector<unsigned char> data;
+            CScript::const_iterator pstart = pc;
+            if (!sIn.GetOp(pc, opcode, data))
+                return; // ?
+            if (opcode < OP_PUSHDATA1 && opcode > OP_0) /* 1-byte push */
+            {
+                /* Convert to OP_PUSHDATA2 with same data */
+                sOut.insert(sOut.end(), OP_PUSHDATA2);
+                unsigned short nSize = data.size();
+                sOut.insert(sOut.end(), (unsigned char*)&nSize, (unsigned char*)&nSize + sizeof(nSize));
+                sOut.insert(sOut.end(), data.begin(), data.end());
+            } else { /* Pass through other operations as-is */
+                sOut.insert(sOut.end(), pstart, pc);
+            }
+        }
+        LogPrintf("  Mutated input: %s\n", HexStr(sOut));
+        txin.scriptSig = sOut;
+    }
+    {
+        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+        ssTx << tx;
+        string strHex = HexStr(ssTx.begin(), ssTx.end());
+        LogPrintf("After MutateTransaction: txid=%s raw=%s\n", tx.GetHash().GetHex(), strHex);
+    }
+}
+
 bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
 {
     RandAddSeedPerfmon();
@@ -3573,6 +3616,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         vector<uint256> vEraseQueue;
         CTransaction tx;
         vRecv >> tx;
+
+        if(GetArg("-mutatetransaction", false))
+            MutateTransaction(tx);
 
         CInv inv(MSG_TX, tx.GetHash());
         pfrom->AddInventoryKnown(inv);
