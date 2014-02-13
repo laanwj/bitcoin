@@ -96,6 +96,21 @@ bool CWallet::AddCryptedKey(const CPubKey &vchPubKey,
     return false;
 }
 
+bool CWallet::LoadTransaction(const uint256 &hash, const CWalletTx &wtxIn)
+{
+    AssertLockHeld(cs_wallet); // mapWallet, mapInputs
+    LogPrintf("LoadTransaction %s\n", hash.GetHex());
+    mapWallet[hash] = wtxIn;
+    // Index by inputs
+    CWalletTx &wtx = mapWallet[hash];
+    BOOST_FOREACH(const CTxIn &txin, wtx.vin)
+    {
+        LogPrintf("  Inserting input %s (%s)\n", txin.ToString(), txin.GetHash().GetHex());
+        mapInputs.insert(make_pair(txin.GetHash(), &wtx));
+    }
+    return true;
+}
+
 bool CWallet::LoadKeyMetadata(const CPubKey &pubkey, const CKeyMetadata &meta)
 {
     AssertLockHeld(cs_wallet); // mapKeyMetadata
@@ -394,6 +409,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
         pair<map<uint256, CWalletTx>::iterator, bool> ret = mapWallet.insert(make_pair(hash, wtxIn));
         CWalletTx& wtx = (*ret.first).second;
         wtx.BindWallet(this);
+
         bool fInsertedNew = ret.second;
         if (fInsertedNew)
         {
@@ -444,6 +460,36 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
                     LogPrintf("AddToWallet() : found %s in block %s not in index\n",
                              wtxIn.GetHash().ToString(),
                              wtxIn.hashBlock.ToString());
+            }
+
+            // Check and update inputs map to inherit metadata
+            CWalletTx *origtx = 0;
+            BOOST_FOREACH(const CTxIn &txin, wtx.vin)
+            {
+                uint256 hash = txin.GetHash();
+                LogPrintf("Checking input %s against existing transactions\n", hash.GetHex());
+                // Find out if there is already a transaction spending this vin
+                InputMap::iterator i = mapInputs.find(hash);
+                if (i != mapInputs.end()) // Pick the first
+                {
+                    if (origtx)
+                    {
+                        if (origtx != i->second)
+                        {
+                            LogPrintf("Warning: additional existing transaction %s spends inputs of new transaction\n",
+                                i->second->GetHash().GetHex());
+                        }
+                    } else {
+                        LogPrintf("Existing transaction %s spends input of new transaction, inheriting metadata\n",
+                            i->second->GetHash().GetHex());
+                        origtx = i->second;
+                    }
+                }
+                // Add it to the map
+                mapInputs.insert(make_pair(hash, &wtx));
+            }
+            if(origtx)
+            {
             }
         }
 

@@ -382,7 +382,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             if (wtx.nOrderPos == -1)
                 wss.fAnyUnordered = true;
 
-            pwallet->mapWallet[hash] = wtx;
+            pwallet->LoadTransaction(hash, wtx);
             //// debug print
             //LogPrintf("LoadWallet  %s\n", wtx.GetHash().ToString());
             //LogPrintf(" %12"PRId64"  %s  %s  %s\n",

@@ -162,6 +162,10 @@ public:
 
     int64_t nTimeFirstKey;
 
+    /// Multimap from inputs to transactions
+    typedef std::multimap<uint256, CWalletTx*> InputMap;
+    InputMap mapInputs;
+
     // check whether we are allowed to upgrade (or already support) to the named feature
     bool CanSupportFeature(enum WalletFeature wf) { AssertLockHeld(cs_wallet); return nWalletMaxVersion >= wf; }
 
@@ -174,6 +178,8 @@ public:
     void UnlockAllCoins();
     void ListLockedCoins(std::vector<COutPoint>& vOutpts);
 
+    // Add a transaction to the wallet without writing to disk (used by walletdb)
+    bool LoadTransaction(const uint256 &hash, const CWalletTx &wtx);
     // keystore implementation
     // Generate a new key
     CPubKey GenerateNewKey();
