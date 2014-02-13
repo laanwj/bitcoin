@@ -51,6 +51,11 @@ void CTxIn::print() const
     LogPrintf("%s\n", ToString());
 }
 
+uint256 CTxIn::GetHash() const
+{
+    return SerializeHash(*this);
+}
+
 CTxOut::CTxOut(int64_t nValueIn, CScript scriptPubKeyIn)
 {
     nValue = nValueIn;

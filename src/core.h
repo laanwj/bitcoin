@@ -106,6 +106,8 @@ public:
         return !(a == b);
     }
 
+    uint256 GetHash() const;
+
     std::string ToString() const;
     void print() const;
 };
