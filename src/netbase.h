@@ -168,7 +168,14 @@ void SplitHostPort(std::string in, int &portOut, std::string &hostOut);
 bool SetProxy(enum Network net, CService addrProxy);
 bool GetProxy(enum Network net, proxyType &proxyInfoOut);
 bool IsProxy(const CNetAddr &addr);
-bool SetNameProxy(CService addrProxy);
+/**
+ * Return the proxy for for names we don't know whether they are on IPv4 or
+ * IPv6 (but know they are not on .onion).
+ * This chooses the first proxy of (NET_IPV4,NET_IPV6) available.
+ * If no proxy is available, return false.
+ */
+bool GetNameProxy(proxyType &nameProxyOut);
+bool HaveProxy(enum Network net, proxyType &proxyInfoOut);
 bool HaveNameProxy();
 bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nMaxSolutions = 0, bool fAllowLookup = true);
 bool Lookup(const char *pszName, CService& addr, int portDefault = 0, bool fAllowLookup = true);

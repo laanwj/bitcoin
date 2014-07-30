@@ -815,7 +815,6 @@ bool AppInit2(boost::thread_group& threadGroup)
             SetProxy(NET_IPV4, addrProxy);
         if (!IsLimited(NET_IPV6))
             SetProxy(NET_IPV6, addrProxy);
-        SetNameProxy(addrProxy);
         fProxy = true;
     }
 

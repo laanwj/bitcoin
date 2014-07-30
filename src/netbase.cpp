@@ -36,7 +36,6 @@ using namespace std;
 
 // Settings
 static proxyType proxyInfo[NET_MAX];
-static CService nameProxy;
 static CCriticalSection cs_proxyInfos;
 int nConnectTimeout = 5000;
 bool fNameLookup = false;
@@ -424,25 +423,22 @@ bool GetProxy(enum Network net, proxyType &proxyInfoOut) {
     return true;
 }
 
-bool SetNameProxy(CService addrProxy) {
-    if (!addrProxy.IsValid())
-        return false;
-    LOCK(cs_proxyInfos);
-    nameProxy = addrProxy;
-    return true;
+bool GetNameProxy(proxyType &nameProxyOut) {
+    if(GetProxy(NET_IPV4, nameProxyOut))
+        return true;
+    if(GetProxy(NET_IPV6, nameProxyOut))
+        return true;
+    return false;
 }
 
-bool GetNameProxy(CService &nameProxyOut) {
-    LOCK(cs_proxyInfos);
-    if(!nameProxy.IsValid())
-        return false;
-    nameProxyOut = nameProxy;
-    return true;
+bool HaveProxy(enum Network net, proxyType &proxyInfoOut) {
+    proxyType dummy;
+    return GetProxy(net, dummy);
 }
 
 bool HaveNameProxy() {
-    LOCK(cs_proxyInfos);
-    return nameProxy.IsValid();
+    proxyType dummy;
+    return GetNameProxy(dummy);
 }
 
 bool IsProxy(const CNetAddr &addr) {
