@@ -3609,9 +3609,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             {
                 pfrom->PushMessage("getaddr");
                 pfrom->fGetAddr = true;
-            }
-            addrman.Good(pfrom->addr);
-        } else {
+            } addrman.Good(pfrom->addr); } else {
             if (((CNetAddr)pfrom->addr) == (CNetAddr)addrFrom)
             {
                 addrman.Add(addrFrom, addrFrom);
@@ -3630,11 +3628,12 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
         string remoteAddr;
         if (fLogIPs)
-            remoteAddr = " from " + pfrom->addr.ToStringIP();
+            remoteAddr = ", peeraddr=" + pfrom->addr.ToString();
 
-        LogPrintf("receive version message%s: %s: version %d, blocks=%d, us=%s, peer=%d\n",
-                  remoteAddr, pfrom->cleanSubVer, pfrom->nVersion,
-                  pfrom->nStartingHeight, addrMe.ToString(), pfrom->id);
+        LogPrintf("receive version message: %s: version %d, blocks=%d, us=%s, peer=%d%s\n",
+                  pfrom->cleanSubVer, pfrom->nVersion,
+                  pfrom->nStartingHeight, addrMe.ToString(), pfrom->id,
+                  remoteAddr);
 
         AddTimeData(pfrom->addr, nTime);
     }
