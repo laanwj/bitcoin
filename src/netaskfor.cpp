@@ -105,7 +105,7 @@ void FinalizeNode(NodeId nodeid)
 
             if (i->second.beingRequestedFrom == nodeid)
             {
-                LogPrint("netaskfor", "%s: Inv item %s was being requested from destructing node %i\n",
+                LogPrint("tx", "%s: %s was being requested from destructing peer=%i\n",
                         __func__,
                         inv.ToString(), nodeid);
                 i->second.beingRequestedFrom = 0;
@@ -151,21 +151,20 @@ void RequestItem(NodeId nodeid, CInvState &invstate, const CInv &inv, bool isRet
     assert(state && state->node);
     CNode *node = state->node;
 
-    LogPrint("netaskfor", "%s: Requesting item %s from node %i (%s)\n", __func__,
+    LogPrint("tx", "%s: Requesting %s from peer=%i (%s)\n", __func__,
             inv.ToString(), nodeid,
             isRetry ? "retry" : "first request");
     invstate.beingRequestedFrom = nodeid;
 
-    std::vector<CInv> vGetData;
-    vGetData.push_back(inv);
-    node->PushMessage("getdata", vGetData);
+    int64_t nNow = GetTimeMicros();
+    node->mapAskFor.insert(std::make_pair(nNow, inv);
 }
 
 void ThreadHandleAskFor()
 {
     while (!fStopThread)
     {
-        LogPrint("netaskfor", "%s: iteration\n", __func__);
+        LogPrint("tx2", "%s: iteration\n", __func__);
         int64_t timeToNext = std::numeric_limits<int64_t>::max();
         {
             LOCK(cs_invRequests);
@@ -175,7 +174,7 @@ void ThreadHandleAskFor()
             {
                 const CInv &inv = invRequestsWorkQueue.begin()->second;
                 MapInvRequests::iterator it = mapInvRequests.find(inv);
-                LogPrint("netaskfor", "%s: processing item %s\n", __func__, inv.ToString());
+                LogPrint("tx2", "%s: processing %s\n", __func__, inv.ToString());
                 if (it != mapInvRequests.end())
                 {
                     CInvState &invstate = it->second;
@@ -187,7 +186,7 @@ void ThreadHandleAskFor()
                     /// that we haven't / tried yet.
                     if (invstate.notRequestedFrom.empty())
                     {
-                        LogPrint("netaskfor", "%s: No more nodes to request item %s from, discarding request\n", __func__, inv.ToString());
+                        LogPrint("tx2", "%s: No more nodes to request %s from, discarding request\n", __func__, inv.ToString());
                         Forget(it);
                     } else {
                         CInvState::NodeSet::iterator first = invstate.notRequestedFrom.begin();
@@ -200,7 +199,7 @@ void ThreadHandleAskFor()
                         invstate.workQueueIter = invRequestsWorkQueue.insert(std::make_pair(now + NetAskFor::REQUEST_TIMEOUT, inv));
                     }
                 } else {
-                    LogPrint("netaskfor", "%s: request for item %s is missing!\n", __func__, inv.ToString());
+                    LogPrint("tx2", "%s: request for %s is missing!\n", __func__, inv.ToString());
                 }
                 invRequestsWorkQueue.erase(invRequestsWorkQueue.begin());
             }
@@ -212,11 +211,11 @@ void ThreadHandleAskFor()
         /// If we don't know how long until next work item, wait until woken up
         if (timeToNext == std::numeric_limits<int64_t>::max())
         {
-            LogPrint("netaskfor", "%s: blocking\n", __func__);
+            LogPrint("tx2", "%s: blocking\n", __func__);
             condInvRequests.wait();
         } else if (timeToNext > 0)
         {
-            LogPrint("netaskfor", "%s: waiting for %d us\n", __func__, timeToNext);
+            LogPrint("tx2", "%s: waiting for %d us\n", __func__, timeToNext);
             condInvRequests.timed_wait((timeToNext+999LL)/1000LL);
         }
     }
@@ -246,13 +245,13 @@ void Completed(CNode *node, const CInv& inv)
     MapInvRequests::iterator i = mapInvRequests.find(inv);
     if (i != mapInvRequests.end())
     {
-        LogPrint("netaskfor", "%s: %s peer=%i\n", __func__, inv.ToString(), node->GetId());
+        LogPrint("tx2", "%s: %s\n", __func__, inv.ToString());
         Forget(i);
     } else {
         /// This can happen if a node sends a transaction without unannouncing it with 'inv'
         /// first, or then we retry a request, which completes (and thus forget about), and then
         /// the original node comes back and sends our requested data anyway.
-        LogPrint("netaskfor", "%s: %s not found! peer=%i\n", __func__, inv.ToString(), node->GetId());
+        LogPrint("tx2", "%s: %s not found!\n", __func__, inv.ToString());
     }
 }
 
@@ -269,7 +268,7 @@ void AskFor(CNode *node, const CInv& inv)
     if (state->setAskFor.size() > MAX_SETASKFOR_SZ)
         return;
 
-    LogPrint("netaskfor", "askfor %s  peer=%d\n", inv.ToString(), nodeid);
+    LogPrint("tx", "askfor %s  peer=%d\n", inv.ToString(), nodeid);
 
     MapInvRequests::iterator it = mapInvRequests.find(inv);
     if (it == mapInvRequests.end())
