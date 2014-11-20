@@ -84,7 +84,7 @@ static string AvailableDataFormatsString()
             formats.append(",");
         }
     
-    if(formats.length()>0)
+    if(formats.length() > 0)
         return formats.substr(0,formats.length()-1);
     
     return formats;
@@ -215,7 +215,7 @@ bool HTTPReq_REST(AcceptedConnection *conn,
 {
     try {
         if(RPCIsInWarmup())
-            throw RESTERR(HTTP_SERVICE_UNAVAILABLE, "Service currently not available (Loading block index...).");
+            throw RESTERR(HTTP_SERVICE_UNAVAILABLE, "Service temporarily unavailable.");
         
         for (unsigned int i = 0; i < ARRAYLEN(uri_prefixes); i++) {
             unsigned int plen = strlen(uri_prefixes[i].prefix);
