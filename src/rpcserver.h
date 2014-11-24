@@ -53,7 +53,7 @@ void SetRPCWarmupStatus(const std::string& newStatus);
 void SetRPCWarmupFinished();
 
 /* returns the current warmup state.  */
-bool RPCIsInWarmup();
+bool RPCIsInWarmup(std::string *statusOut);
 
 /**
  * Type-check arguments; throws JSONRPCError if wrong type given. Does not check that

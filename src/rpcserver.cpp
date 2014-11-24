@@ -762,8 +762,11 @@ void SetRPCWarmupFinished()
     fRPCInWarmup = false;
 }
 
-bool RPCIsInWarmup()
+bool RPCIsInWarmup(std::string *outStatus)
 {
+    LOCK(cs_rpcWarmup);
+    if (outStatus)
+        *outStatus = rpcWarmupStatus;
     return fRPCInWarmup;
 }
 

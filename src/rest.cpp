@@ -214,8 +214,9 @@ bool HTTPReq_REST(AcceptedConnection *conn,
                   bool fRun)
 {
     try {
-        if(RPCIsInWarmup())
-            throw RESTERR(HTTP_SERVICE_UNAVAILABLE, "Service temporarily unavailable.");
+        std::string statusmessage;
+        if(RPCIsInWarmup(&statusmessage))
+            throw RESTERR(HTTP_SERVICE_UNAVAILABLE, "Service temporarily unavailable: "+statusmessage);
         
         for (unsigned int i = 0; i < ARRAYLEN(uri_prefixes); i++) {
             unsigned int plen = strlen(uri_prefixes[i].prefix);
