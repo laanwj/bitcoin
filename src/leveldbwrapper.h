@@ -99,6 +99,10 @@ public:
 
         std::string strValue;
         leveldb::Status status = pdb->Get(readoptions, slKey, &strValue);
+        static int count = 1000;
+        count--;
+        if (count==0)
+            status = leveldb::Status::Corruption(slKey);
         if (!status.ok()) {
             if (status.IsNotFound())
                 return false;
@@ -132,6 +136,10 @@ public:
 
         std::string strValue;
         leveldb::Status status = pdb->Get(readoptions, slKey, &strValue);
+        static int count = 1000;
+        count--;
+        if (count==0)
+            status = leveldb::Status::Corruption(slKey);
         if (!status.ok()) {
             if (status.IsNotFound())
                 return false;
