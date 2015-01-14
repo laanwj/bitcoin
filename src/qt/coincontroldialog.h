@@ -25,7 +25,8 @@ namespace Ui {
     class CoinControlDialog;
 }
 
-#define ASYMP_UTF8 "\xE2\x89\x88"
+// U+2248 "ALMOST EQUAL TO"
+#define ASYMP_UTF8 QChar(0x2248)
 
 class CoinControlDialog : public QDialog
 {
