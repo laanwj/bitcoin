@@ -7,7 +7,6 @@
 #define BITCOIN_NET_H
 
 #include "bloom.h"
-#include "chainparams.h"
 #include "compat.h"
 #include "hash.h"
 #include "limitedmap.h"
@@ -185,7 +184,7 @@ public:
 
     int64_t nTime;                  // time (in microseconds) of message receipt.
 
-    CNetMessage(int nTypeIn, int nVersionIn) : hdrbuf(nTypeIn, nVersionIn), hdr(Params().MessageStart()), vRecv(nTypeIn, nVersionIn) {
+    CNetMessage(const CMessageHeader::MessageStartChars& pchMessageStartIn, int nTypeIn, int nVersionIn) : hdrbuf(nTypeIn, nVersionIn), hdr(pchMessageStartIn), vRecv(nTypeIn, nVersionIn) {
         hdrbuf.resize(24);
         in_data = false;
         nHdrPos = 0;
