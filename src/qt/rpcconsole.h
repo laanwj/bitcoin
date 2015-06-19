@@ -78,6 +78,8 @@ public slots:
     void peerLayoutChanged();
     /** Disconnect a selected node on the Peers tab */
     void disconnectSelectedNode();
+    /** Ban a selected node on the Peers tab */
+    void banSelectedNode(int bantime);
 
 signals:
     // For RPC command executor
