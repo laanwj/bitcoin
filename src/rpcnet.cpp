@@ -571,6 +571,6 @@ UniValue clearbanned(const UniValue& params, bool fHelp)
 
     CNode::ClearBanned();
     uiInterface.BannedListChanged();
-    
+
     return NullUniValue;
 }

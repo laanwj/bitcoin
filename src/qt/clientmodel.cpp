@@ -213,6 +213,7 @@ QString ClientModel::formatClientStartupTime() const
 void ClientModel::updateBanlist()
 {
     banTableModel->refresh();
+    emit banListChanged();
 }
 
 // Handlers for core signals
