@@ -4,6 +4,7 @@
 
 #include "clientmodel.h"
 
+#include "bantablemodel.h"
 #include "guiconstants.h"
 #include "peertablemodel.h"
 
@@ -27,6 +28,7 @@ ClientModel::ClientModel(OptionsModel *optionsModel, QObject *parent) :
     QObject(parent),
     optionsModel(optionsModel),
     peerTableModel(0),
+    banTableModel(0),
     cachedNumBlocks(0),
     cachedBlockDate(QDateTime()),
     cachedReindexing(0),
@@ -34,6 +36,7 @@ ClientModel::ClientModel(OptionsModel *optionsModel, QObject *parent) :
     pollTimer(0)
 {
     peerTableModel = new PeerTableModel(this);
+    banTableModel = new BanTableModel(this);
     pollTimer = new QTimer(this);
     connect(pollTimer, SIGNAL(timeout()), this, SLOT(updateTimer()));
     pollTimer->start(MODEL_UPDATE_DELAY);
@@ -177,6 +180,11 @@ PeerTableModel *ClientModel::getPeerTableModel()
     return peerTableModel;
 }
 
+BanTableModel *ClientModel::getBanTableModel()
+{
+    return banTableModel;
+}
+
 QString ClientModel::formatFullVersion() const
 {
     return QString::fromStdString(FormatFullVersion());
@@ -200,6 +208,11 @@ QString ClientModel::clientName() const
 QString ClientModel::formatClientStartupTime() const
 {
     return QDateTime::fromTime_t(nClientStartupTime).toString();
+}
+
+void ClientModel::updateBanlist()
+{
+    banTableModel->refresh();
 }
 
 // Handlers for core signals
