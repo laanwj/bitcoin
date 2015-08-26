@@ -338,7 +338,7 @@ private:
     void protocolinfo_cb(TorControlConnection& conn, const TorControlReply& reply);
     /** Callback after succesful connection */
     void connected_cb(TorControlConnection& conn);
-    /** Callback after connection lost */
+    /** Callback after connection lost or failed connection attempt */
     void disconnected_cb(TorControlConnection& conn);
 
     /** Callback for shutdown poll timer */
