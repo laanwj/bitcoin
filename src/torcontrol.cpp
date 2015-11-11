@@ -38,6 +38,11 @@ static const std::string TOR_SAFE_CLIENTKEY = "Tor safe cookie authentication co
 static const float RECONNECT_TIMEOUT_START = 1.0;
 /** Exponential backoff configuration - growth factor */
 static const float RECONNECT_TIMEOUT_EXP = 1.5;
+/** Maximum length for lines received on TorControlConnection.
+ * tor-control-spec.txt mentions that there is explicitly no limit defined to line length,
+ * this is belt-and-suspenders sanity limit to prevent memory exhaustion.
+ */
+static const int MAX_LINE_LENGTH = 100000;
 
 /****** Low-level TorControlConnection ********/
 
@@ -138,7 +143,7 @@ void TorControlConnection::readcb(struct bufferevent *bev, void *ctx)
         if (s.size() < 4) // Short line
             continue;
         // <status>(-|+| )<data><CRLF>
-        self->message.code = atoi(s.substr(0,3).c_str());
+        self->message.code = atoi(s.substr(0,3));
         self->message.lines.push_back(s.substr(4));
         char ch = s[3]; // '-','+' or ' '
         if (ch == ' ') {
@@ -158,6 +163,13 @@ void TorControlConnection::readcb(struct bufferevent *bev, void *ctx)
             }
             self->message.Clear();
         }
+    }
+    //  Check for size of buffer - protect against memory exhaustion with very long lines
+    //  Do this after evbuffer_readln to make sure all full lines have been
+    //  removed from the buffer. Everything left is an incomplete line.
+    if (evbuffer_get_length(input) > MAX_LINE_LENGTH) {
+        LogPrintf("tor: Disconnecting because MAX_LINE_LENGTH exceeded\n");
+        self->Disconnect();
     }
 }
 

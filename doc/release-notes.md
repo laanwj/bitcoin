@@ -164,8 +164,9 @@ manual configuration. This will positively affect the number of available
 .onion nodes.
 
 This new feature is enabled by default if Bitcoin Core is listening, and
-connection to Tor can be made. It can be configured with the `-listenonion`,
-`-torcontrol` and `-torpassword` settings.
+a connection to Tor can be made. It can be configured with the `-listenonion`,
+`-torcontrol` and `-torpassword` settings. To show verbose debugging
+information, pass `-debug=tor`.
 
 0.12.0 Change log
 =================
