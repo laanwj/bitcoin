@@ -109,6 +109,8 @@ static const unsigned int DEFAULT_BANSCORE_THRESHOLD = 100;
 static const bool DEFAULT_TESTSAFEMODE = false;
 /** Default for -permitrbf */
 static const bool DEFAULT_PERMIT_REPLACEMENT = true;
+/** Default for -permitrbf */
+static const bool DEFAULT_PERMIT_REPLACEABLE = true;
 
 /** Maximum number of headers to announce when relaying blocks with headers message.*/
 static const unsigned int MAX_BLOCKS_TO_ANNOUNCE = 8;
@@ -142,6 +144,7 @@ extern CFeeRate minRelayTxFee;
 extern bool fAlerts;
 extern int64_t nMaxTipAge;
 extern bool fPermitReplacement;
+extern bool fPermitReplaceable;
 
 /** Best header we've seen so far (used for getheaders queries' starting points). */
 extern CBlockIndex *pindexBestHeader;

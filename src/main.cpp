@@ -79,6 +79,7 @@ bool fAlerts = DEFAULT_ALERTS;
  */
 int64_t nMaxTipAge = DEFAULT_MAX_TIP_AGE;
 bool fPermitReplacement = DEFAULT_PERMIT_REPLACEMENT;
+bool fPermitReplaceable = DEFAULT_PERMIT_REPLACEABLE;
 
 /** Fees smaller than this (in satoshi) are considered zero fee (for relaying, mining and transaction creation) */
 CFeeRate minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE);
@@ -844,6 +845,12 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
     uint256 hash = tx.GetHash();
     if (pool.exists(hash))
         return state.Invalid(false, REJECT_ALREADY_KNOWN, "txn-already-in-mempool");
+
+    // Only accept nSequence < max transactions if replaceable transactions are permitted
+    if (!fPermitReplaceable)
+        BOOST_FOREACH(const CTxIn &txin, tx.vin)
+            if (txin.nSequence < std::numeric_limits<unsigned int>::max()-1)
+                return state.Invalid(false, REJECT_NONSTANDARD, "txn-replaceable");
 
     // Check for conflicts with in-memory transactions
     set<uint256> setConflicts;
