@@ -249,4 +249,20 @@ template <typename Callable> void TraceThread(const char* name,  Callable func)
 
 std::string CopyrightHolders(const std::string& strPrefix);
 
+/**
+ * Split shell command line into a list of arguments. Aims to emulate \c bash and friends.
+ *
+ * - Arguments are delimited with whitespace
+ * - Extra whitespace at the beginning and end and between arguments will be ignored
+ * - Text can be "double" or 'single' quoted
+ * - The backslash \c \ is used as escape character
+ *   - Outside quotes, any character can be escaped
+ *   - Within double quotes, only escape \c " and backslashes before a \c " or another backslash
+ *   - Within single quotes, no escaping is possible and no special interpretation takes place
+ *
+ * @param[out]   args        Parsed arguments will be appended to this list
+ * @param[in]    strCommand  Command line to split
+ */
+bool ParseCommandLine(std::vector<std::string> &args, const std::string &strCommand);
+
 #endif // BITCOIN_UTIL_H

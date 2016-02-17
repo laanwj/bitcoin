@@ -43,6 +43,7 @@ std::string HelpMessageCli()
     strUsage += HelpMessageOpt("-rpcuser=<user>", _("Username for JSON-RPC connections"));
     strUsage += HelpMessageOpt("-rpcpassword=<pw>", _("Password for JSON-RPC connections"));
     strUsage += HelpMessageOpt("-rpcclienttimeout=<n>", strprintf(_("Timeout during HTTP requests (default: %d)"), DEFAULT_HTTP_CLIENT_TIMEOUT));
+    strUsage += HelpMessageOpt("-stdin", _("Read command line from standard input (recommended for sensitive information such as passphrase)"));
 
     return strUsage;
 }
@@ -232,15 +233,23 @@ int CommandLineRPC(int argc, char *argv[])
             argc--;
             argv++;
         }
-
-        // Method
-        if (argc < 2)
-            throw runtime_error("too few parameters");
-        string strMethod = argv[1];
-
-        // Parameters default to strings
-        std::vector<std::string> strParams(&argv[2], &argv[argc]);
-        UniValue params = RPCConvertValues(strMethod, strParams);
+        std::vector<std::string> args;
+        if (GetBoolArg("-stdin", false)) {
+            if (argc > 1)
+                throw runtime_error("cannot use both command-line arguments and -stdin");
+            // Read command and args as a line from stdin
+            std::string line;
+            if (!std::getline(std::cin,line))
+                throw runtime_error("could not read command from standard input");
+            if (!ParseCommandLine(args, line))
+                throw runtime_error("unbalanced ' or \" in command: " + line);
+        } else {
+            args = std::vector<std::string>(&argv[1], &argv[argc]);
+        }
+        if (args.size() < 1)
+            throw runtime_error("too few parameters (need at least command)");
+        std::string strMethod = args[0];
+        UniValue params = RPCConvertValues(strMethod, std::vector<std::string>(args.begin()+1, args.end()));
 
         // Execute and handle connection failures with -rpcwait
         const bool fWait = GetBoolArg("-rpcwait", false);
