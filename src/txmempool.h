@@ -18,6 +18,8 @@
 #include "boost/multi_index_container.hpp"
 #include "boost/multi_index/ordered_index.hpp"
 
+#include <boost/signals2/signal.hpp>
+
 class CAutoFile;
 class CBlockIndex;
 
@@ -319,6 +321,18 @@ public:
     size_t DynamicMemoryUsage() const { return 0; }
 };
 
+/** Reason why a transaction was removed from the mempool,
+ * this is passed to the notification signal.
+ */
+enum MemPoolRemovalReason {
+    MPR_UNKNOWN = 0, //! Manually removed or unknown reason
+    MPR_EXPIRY,      //! Expired from mempool
+    MPR_SIZELIMIT,   //! Removed in size limiting
+    MPR_REORG,       //! Removed for reorganization
+    MPR_BLOCK,       //! Removed for block
+    MPR_REPLACED     //! Removed for conflict (replaced)
+};
+
 /**
  * CTxMemPool stores valid-according-to-the-current-best-chain
  * transactions that may be included in the next block.
@@ -504,9 +518,9 @@ public:
     bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate = true);
     bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, setEntries &setAncestors, bool fCurrentEstimate = true);
 
-    void removeRecursive(const CTransaction &tx, std::list<CTransaction>& removed);
+    void removeRecursive(const CTransaction &tx, std::list<CTransaction>& removed, MemPoolRemovalReason reason = MPR_UNKNOWN);
     void removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMemPoolHeight, int flags);
-    void removeConflicts(const CTransaction &tx, std::list<CTransaction>& removed);
+    void removeConflicts(const CTransaction &tx, std::list<CTransaction>& removed, MemPoolRemovalReason reason = MPR_UNKNOWN);
     void removeForBlock(const std::vector<CTransaction>& vtx, unsigned int nBlockHeight,
                         std::list<CTransaction>& conflicts, bool fCurrentEstimate = true);
     void clear();
@@ -534,7 +548,7 @@ public:
      *  Set updateDescendants to true when removing a tx that was in a block, so
      *  that any in-mempool descendants have their ancestor state updated.
      */
-    void RemoveStaged(setEntries &stage, bool updateDescendants);
+    void RemoveStaged(setEntries &stage, bool updateDescendants, MemPoolRemovalReason reason = MPR_UNKNOWN);
 
     /** When adding transactions from a disconnected block back to the mempool,
      *  new mempool entries may have children in the mempool (which is generally
@@ -626,6 +640,9 @@ public:
 
     size_t DynamicMemoryUsage() const;
 
+    boost::signals2::signal<void (const CTxMemPoolEntry &)> NotifyEntryAdded;
+    boost::signals2::signal<void (const CTxMemPoolEntry &, MemPoolRemovalReason)> NotifyEntryRemoved;
+
 private:
     /** UpdateForDescendants is used by UpdateTransactionsFromBlock to update
      *  the descendants for a single transaction that has been added to the
@@ -662,7 +679,7 @@ private:
      *  transactions in a chain before we've updated all the state for the
      *  removal.
      */
-    void removeUnchecked(txiter entry);
+    void removeUnchecked(txiter entry, MemPoolRemovalReason reason = MPR_UNKNOWN);
 };
 
 /** 
