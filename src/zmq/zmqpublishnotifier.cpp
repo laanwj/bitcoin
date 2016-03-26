@@ -6,6 +6,7 @@
 #include "zmqpublishnotifier.h"
 #include "main.h"
 #include "util.h"
+#include "crypto/common.h"
 
 static std::multimap<std::string, CZMQAbstractPublishNotifier*> mapPublishNotifiers;
 
@@ -118,13 +119,19 @@ void CZMQAbstractPublishNotifier::Shutdown()
     psocket = 0;
 }
 
+/** Write 256-bit hash to buffer reversed format */
+void WriteHash(unsigned char *ptr, const uint256 &hash)
+{
+    for (unsigned int i = 0; i < 32; i++)
+        ptr[31 - i] = hash.begin()[i];
+}
+
 bool CZMQPublishHashBlockNotifier::NotifyBlock(const CBlockIndex *pindex)
 {
     uint256 hash = pindex->GetBlockHash();
     LogPrint("zmq", "zmq: Publish hashblock %s\n", hash.GetHex());
-    char data[32];
-    for (unsigned int i = 0; i < 32; i++)
-        data[31 - i] = hash.begin()[i];
+    uint8_t data[32];
+    WriteHash(data, hash);
     int rc = zmq_send_multipart(psocket, "hashblock", 9, data, 32, 0);
     return rc == 0;
 }
@@ -133,9 +140,8 @@ bool CZMQPublishHashTransactionNotifier::NotifyTransaction(const CTransaction &t
 {
     uint256 hash = transaction.GetHash();
     LogPrint("zmq", "zmq: Publish hashtx %s\n", hash.GetHex());
-    char data[32];
-    for (unsigned int i = 0; i < 32; i++)
-        data[31 - i] = hash.begin()[i];
+    uint8_t data[32];
+    WriteHash(data, hash);
     int rc = zmq_send_multipart(psocket, "hashtx", 6, data, 32, 0);
     return rc == 0;
 }
@@ -171,3 +177,41 @@ bool CZMQPublishRawTransactionNotifier::NotifyTransaction(const CTransaction &tr
     int rc = zmq_send_multipart(psocket, "rawtx", 5, &(*ss.begin()), ss.size(), 0);
     return rc == 0;
 }
+
+CZMQPublishMempoolNotifier::CZMQPublishMempoolNotifier(CTxMemPool *mempoolIn):
+    mempool(mempoolIn)
+{
+    mempool->NotifyEntryAdded.connect(boost::bind(&CZMQPublishMempoolNotifier::NotifyEntryAdded, this, _1));
+    mempool->NotifyEntryRemoved.connect(boost::bind(&CZMQPublishMempoolNotifier::NotifyEntryRemoved, this, _1, _2));
+}
+
+CZMQPublishMempoolNotifier::~CZMQPublishMempoolNotifier()
+{
+    mempool->NotifyEntryAdded.disconnect(boost::bind(&CZMQPublishMempoolNotifier::NotifyEntryAdded, this, _1));
+    mempool->NotifyEntryRemoved.disconnect(boost::bind(&CZMQPublishMempoolNotifier::NotifyEntryRemoved, this, _1, _2));
+}
+
+void CZMQPublishMempoolNotifier::NotifyEntryAdded(const CTxMemPoolEntry &entry)
+{
+    LogPrint("zmq", "zmq: mempool entry added: %s fee=%i size=%i\n", entry.GetTx().GetHash().ToString(),
+            entry.GetFee(), entry.GetTxSize());
+    uint8_t data[32 + 8 + 4];
+    WriteHash(&data[0], entry.GetTx().GetHash());
+    WriteLE64(&data[32], entry.GetFee());
+    WriteLE32(&data[40], entry.GetTxSize());
+    int rc = zmq_send_multipart(psocket, "mempooladded", 12, data, sizeof(data), 0);
+    if (rc != 0)
+        LogPrintf("%s: WARNING: zmq send failed with code %i\n", __func__, rc);
+}
+
+void CZMQPublishMempoolNotifier::NotifyEntryRemoved(const CTxMemPoolEntry &entry, MemPoolRemovalReason reason)
+{
+    LogPrint("zmq", "zmq: mempool entry removed: %s, reason %i\n", entry.GetTx().GetHash().ToString(), (int)reason);
+    uint8_t data[32 + 1];
+    WriteHash(&data[0], entry.GetTx().GetHash());
+    data[32] = reason;
+    int rc = zmq_send_multipart(psocket, "mempoolremoved", 14, data, sizeof(data), 0);
+    if (rc != 0)
+        LogPrintf("%s: WARNING: zmq send failed with code %i\n", __func__, rc);
+}
+

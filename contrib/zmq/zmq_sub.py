@@ -3,6 +3,7 @@
 import array
 import binascii
 import zmq
+import struct
 
 port = 28332
 
@@ -12,7 +13,12 @@ zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "hashblock")
 zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "hashtx")
 zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "rawblock")
 zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "rawtx")
+zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "mempooladded")
+zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "mempoolremoved")
 zmqSubSocket.connect("tcp://127.0.0.1:%i" % port)
+
+# Reasons for removal of transaction from mempool
+MPR_REASONS = {0:'UNKNOWN', 1:'EXPIRY', 2:'SIZELIMIT', 3:'REORG', 4:'BLOCK', 5:'REPLACED'}
 
 try:
     while True:
@@ -32,6 +38,14 @@ try:
         elif topic == "rawtx":
             print '- RAW TX -'
             print binascii.hexlify(body)
+        elif topic == 'mempooladded':
+            print '- MEMPOOL ADDED -'
+            (hash, fee, size) = struct.unpack('<32sQI', body)
+            print '%s fee=%i size=%i' % (binascii.hexlify(hash), fee, size)
+        elif topic == 'mempoolremoved':
+            print '- MEMPOOL REMOVED -'
+            (hash, reason) = struct.unpack('<32sB', body)
+            print '%s reason=%s' % (binascii.hexlify(hash), MPR_REASONS.get(reason, 'UNKNOWN %i' % reason))
 
 except KeyboardInterrupt:
     zmqContext.destroy()

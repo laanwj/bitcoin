@@ -1230,7 +1230,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         AddOneShot(strDest);
 
 #if ENABLE_ZMQ
-    pzmqNotificationInterface = CZMQNotificationInterface::CreateWithArguments(mapArgs);
+    pzmqNotificationInterface = CZMQNotificationInterface::CreateWithArguments(mapArgs, &mempool);
 
     if (pzmqNotificationInterface) {
         RegisterValidationInterface(pzmqNotificationInterface);
