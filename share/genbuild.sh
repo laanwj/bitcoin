@@ -45,7 +45,4 @@ fi
 # only update build.h if necessary
 if [ "$INFO" != "$NEWINFO" ]; then
     echo "$NEWINFO" >"$FILE"
-    if [ -n "$LAST_COMMIT_DATE" ]; then
-        echo "#define BUILD_DATE \"$LAST_COMMIT_DATE\"" >> "$FILE"
-    fi
 fi
