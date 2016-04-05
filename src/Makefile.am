@@ -67,6 +67,7 @@ endif
 
 if BUILD_BITCOIN_UTILS
   bin_PROGRAMS += bitcoin-cli bitcoin-tx
+  bin_PROGRAMS += linearize-utxo
 endif
 
 .PHONY: FORCE check-symbols check-security
@@ -398,6 +399,29 @@ bitcoin_tx_LDADD = \
   $(LIBSECP256K1)
 
 bitcoin_tx_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
+#
+
+# linearize-utxo binary #
+linearize_utxo_SOURCES = linearize-utxo.cpp \
+  txdb.cpp \
+  dbwrapper.cpp \
+  pow.cpp \
+  chain.cpp
+linearize_utxo_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
+linearize_utxo_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+linearize_utxo_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+
+linearize_utxo_LDADD = \
+  $(LIBUNIVALUE) \
+  $(LIBBITCOIN_COMMON) \
+  $(LIBBITCOIN_UTIL) \
+  $(LIBBITCOIN_CONSENSUS) \
+  $(LIBBITCOIN_CRYPTO) \
+  $(LIBSECP256K1) \
+  $(LIBLEVELDB) \
+  $(LIBMEMENV)
+
+linearize_utxo_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
 #
 
 # bitcoinconsensus library #
