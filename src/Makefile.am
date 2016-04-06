@@ -148,7 +148,9 @@ BITCOIN_CORE_H = \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
-  zmq/zmqpublishnotifier.h
+  zmq/zmqpublishnotifier.h \
+  lmdb/lmdb.h \
+  lmdb/midl.h
 
 
 obj/build.h: FORCE
@@ -193,6 +195,8 @@ libbitcoin_server_a_SOURCES = \
   ui_interface.cpp \
   validationinterface.cpp \
   versionbits.cpp \
+  lmdb/mdb.c \
+  lmdb/midl.c \
   $(BITCOIN_CORE_H)
 
 if ENABLE_ZMQ
