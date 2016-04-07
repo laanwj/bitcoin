@@ -197,7 +197,7 @@ private:
 public:
     /**
      * @param[in] path        Location in the filesystem where lmdb data will be stored.
-     * @param[in] nCacheSize  Configures various lmdb cache settings.
+     * @param[in] nCacheSize  IGNORED
      * @param[in] fMemory     If true, use lmdb's memory environment.
      * @param[in] fWipe       If true, remove all existing data.
      * @param[in] obfuscate   If true, store data obfuscated via simple XOR. If false, XOR
