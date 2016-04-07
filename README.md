@@ -1,82 +1,83 @@
-Bitcoin Core integration/staging tree
-=====================================
+Bitcoin Core LMDB experiment
+==============================
 
-[![Build Status](https://travis-ci.org/bitcoin/bitcoin.svg?branch=master)](https://travis-ci.org/bitcoin/bitcoin)
+disclaimer
+-----------
 
-https://bitcoincore.org
+This is part of a blue-skies experiment, it is by no means recommended as a
+replacement for the current leveldb usage.
 
-What is Bitcoin?
-----------------
+Not only is this software PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND as
+specified in `COPYING`, this software has *negative* warranty. If you manage to
+suffer financial or other losses due to this code I demand compensation for
+feelings of misplaced guilt.
 
-Bitcoin is an experimental new digital currency that enables instant payments to
-anyone, anywhere in the world. Bitcoin uses peer-to-peer technology to operate
-with no central authority: managing transactions and issuing money are carried
-out collectively by the network. Bitcoin Core is the name of open source
-software which enables the use of this currency.
+conversion
+-----------
 
-For more information, as well as an immediately useable, binary version of
-the Bitcoin Core software, see https://bitcoin.org/en/download, or read the
-[original whitepaper](https://bitcoincore.org/bitcoin.pdf).
+A script `leveldb2lmdb.py` to convert from leveldb to lmdb format can be found here:
+https://github.com/laanwj/blockdb-troubleshoot
 
-License
--------
+    git clone https://github.com/laanwj/blockdb-troubleshoot
+    cd blockdb-troubleshoot
+    sudo apt-get install python3-setuptools python3-dev
+    ./compile_leveldb.sh
+    ./comile_lmdb.sh
+    ./leveldb2lmdb.py ${DATADIR}/chainstate ${DATADIR}/chainstate2 $((1024*1024*1024*8))
+    ./leveldb2lmdb.py ${DATADIR}/blocks/index ${DATADIR}/blocks/index2 $((1024*1024*1024*8)) 
 
-Bitcoin Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
-information or see https://opensource.org/licenses/MIT.
+(or just `-reindex` from scratch)
+(there is no script to go the other way yet, but that'd be easy to write)
 
-Development Process
--------------------
+what is nice
+--------------
 
-The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoin/bitcoin/tags) are created
-regularly to indicate new official, stable release versions of Bitcoin Core.
+- minimalism: lmdb consists of just two implementation files and two headers. These are currently hacked
+  into the build system.
 
-The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+  - Also fixes #7466 (out-of-tree builds) in one go.
 
-The developer [mailing list](https://lists.linuxfoundation.org/mailman/listinfo/bitcoin-dev)
-should be used to discuss complicated or controversial changes before working
-on a patch set.
+- lmdb database is stored in `chainstate2` and `index2` directories as to not overlap with leveldb
+  databases.
 
-Developer IRC can be found on Freenode at #bitcoin-core-dev.
+issues
+---------
 
-Testing
--------
+Some (potential) issues are discussed below.
 
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test on short notice. Please be patient and help out by testing
-other people's pull requests, and remember this is a security-critical project where any mistake might cost people
-lots of money.
+### mapsize
 
-### Automated Testing
+lmdb forces setting a 'map size' which is essentially the maximum size of the database.
 
-Developers are strongly encouraged to write [unit tests](/doc/unit-tests.md) for new code, and to
-submit new unit tests for old code. Unit tests can be compiled and run
-(assuming they weren't disabled in configure) with: `make check`
+Currently this is set to a fixed 8GB - which is both overkill - and could be too little at some point.
+On OSes with sparse files only a sparse file will be created, but on OSes without them
+the file will be that large.
 
-There are also [regression and integration tests](/qa) of the RPC interface, written
-in Python, that are run automatically on the build server.
-These tests can be run (if the [test dependencies](/qa) are installed) with: `qa/pull-tester/rpc-tests.py`
+In production it's not accepable to set a fixed number here.
+It could be increased on demand by handling [MDB_MAP_FULL](http://symas.com/mdb/doc/group__errors.html#ga0a83370402a060c9175100d4bbfb9f25)
+errors and increasing with [mdb_env_set_mapsize](http://symas.com/mdb/doc/group__mdb.html#gaa2506ec8dab3d969b0e609cd82e619e5).
+However this is tricky: changing the map size is only possible when there are no transactions
+(either read or write) in progress.
 
-The Travis CI system makes sure that every pull request is built for Windows
-and Linux, OS X, and that unit and sanity tests are automatically run.
+This means that write batches need to be restartable, or that batches must give an estimate
+of their increase of the database. The latter could be risky if underestimation happens.
 
-### Manual Quality Assurance (QA) Testing
+### crashes
 
-Changes should be tested by somebody other than the developer who wrote the
-code. This is especially important for large or high-risk changes. It is useful
-to add a test plan to the pull request description if testing the changes is
-not straightforward.
+It is unknown how well lmdb copes with sudden crashes and power loss.
+Leveldb handles these fairly well in most cases, at least with the current patching
+for windows.
 
-Translations
-------------
+### integrity
 
-Changes to translations as well as new translations can be submitted to
-[Bitcoin Core's Transifex page](https://www.transifex.com/projects/p/bitcoin/).
+leveldb adds a CRC32 to each key and value, lmdb doesn't.
+We could do this (or something similar, some fast hash) manually to detect corruption.
 
-Translations are periodically pulled from Transifex and merged into the git repository. See the
-[translation process](doc/translation_process.md) for details on how this works.
+### 64-bit
 
-**Important**: We do not accept translation changes as GitHub pull requests because the next
-pull from Transifex would automatically overwrite them again.
+Only 64-bit. Sorry, life is not fair.
 
-Translators should also subscribe to the [mailing list](https://groups.google.com/forum/#!forum/bitcoin-translators).
+todo
+------
+
+- Compare perfomance in various ways on at least ARM64 and x86_64.
