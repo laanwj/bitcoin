@@ -32,6 +32,8 @@ https://github.com/laanwj/blockdb-troubleshoot
 what is nice
 --------------
 
+- passes the tests as well as seems to work normally on x86_64 as well as ARM64.
+
 - minimalism: lmdb consists of just two implementation files and two headers. These are currently hacked
   into the build system.
 
@@ -39,6 +41,8 @@ what is nice
 
 - lmdb database is stored in `chainstate2` and `index2` directories as to not overlap with leveldb
   databases.
+
+- initial results show that it is faster (see performance results below)
 
 issues
 ---------
@@ -57,10 +61,14 @@ In production it's not accepable to set a fixed number here.
 It could be increased on demand by handling [MDB_MAP_FULL](http://symas.com/mdb/doc/group__errors.html#ga0a83370402a060c9175100d4bbfb9f25)
 errors and increasing with [mdb_env_set_mapsize](http://symas.com/mdb/doc/group__mdb.html#gaa2506ec8dab3d969b0e609cd82e619e5).
 However this is tricky: changing the map size is only possible when there are no transactions
-(either read or write) in progress.
+(either read or write) in progress, and the error will happen during a batch write.
 
-This means that write batches need to be restartable, or that batches must give an estimate
-of their increase of the database. The latter could be risky if underestimation happens.
+This means that either
+
+- write batches need to be restartable, or that 
+- batches must give an estimate of their increase of the database
+
+The latter could be risky if underestimation happens.
 
 ### crashes
 
@@ -77,7 +85,41 @@ We could do this (or something similar, some fast hash) manually to detect corru
 
 Only 64-bit. Sorry, life is not fair.
 
+performance results
+--------------------
+
+### x86_64
+
+Gregory Maxwell did a few benchmarks with this code on a fast x86_64 machine (thanks!).
+
+Initial verification at startup:
+```
+LevelDB:
+2016-04-09 10:20:20 LoadBlockIndexDB: hashBestChain=000000000000000000b128ced925df0b8f7c12162927fc735ec34e03f26a7e22 height=406435 date=2016-04-09 10:09:36 progress=0.999995
+2016-04-09 10:20:20 init message: Verifying blocks...
+2016-04-09 10:20:20 Verifying last 288 blocks at level 3
+2016-04-09 10:21:26 No coin database inconsistencies in last 289 blocks (431683 transactions)
+2016-04-09 10:21:27  block index           70665ms
+
+LMDB:
+2016-04-09 10:17:18 LoadBlockIndexDB: hashBestChain=000000000000000000b128ced925df0b8f7c12162927fc735ec34e03f26a7e22 height=406435 date=2016-04-09 10:09:36 progress=0.999997
+2016-04-09 10:17:18 init message: Verifying blocks...
+2016-04-09 10:17:18 Verifying last 288 blocks at level 3
+2016-04-09 10:17:28 No coin database inconsistencies in last 289 blocks (431683 transactions)
+2016-04-09 10:17:29  block index           15445ms
+```
+About a 4.6x speedup.
+
+Sync performance:
+
+- 5 hours, 5 minutes for LMDB with default dbcache.
+- 8 hours, 27 minutes for LevelDB with default dbcache.
+
+Something like 40% faster.
+
 todo
 ------
 
-- Compare perfomance in various ways on at least ARM64 and x86_64.
+- Compare perfomance in various other ways on at least ARM64 and x86_64.
+- Reliability checks.
+- See mapsize concerns above.
