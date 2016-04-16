@@ -117,6 +117,22 @@ Sync performance:
 
 Something like 40% faster.
 
+Jonasschnelli's reindex benchmark (SSD, 4-core):
+
+    ##LMDB / -reindex (default dbcache)
+    jonasschnelli@bitcoinsrv:~$ cat ~/.bitcoinlmdb/debug.log | grep 'v0.12.99\|progress=1'
+    2016-04-13 19:58:08 Bitcoin version v0.12.99.0-f1d92bd (2016-04-11 11:22:13 +0200)
+    2016-04-14 02:40:40 UpdateTip: new best=0000000000000000046f0b14fa01c286f8f77294243d2eec8393f35d8fb679a8 height=407191 version=0x00000004 log2_work=84.481762 tx=122265305 
+    ==== RESULT: 6.7088888889 h
+
+    ##LEVELDB / -reindex (default dbcache)
+    jonasschnelli@bitcoinsrv:~$ cat ~/.bitcoin/debug.log | grep 'v0.12.99\|height=407191'
+    2016-04-14 07:20:21 Bitcoin version v0.12.99.0-934f2b5 (2016-04-11 12:57:31 +0200)
+    2016-04-14 12:33:47 UpdateTip: new best=0000000000000000046f0b14fa01c286f8f77294243d2eec8393f35d8fb679a8 height=407191 version=0x00000004 log2_work=84.481762 tx=122265305 date='2016-04-14 02:39:54' progress=0.999734 cache=8.0MiB(5917tx)
+    ==== RESULT: 5.2238888889 h
+
+leveldb was 1.2842709773× faster.
+
 todo
 ------
 
