@@ -15,7 +15,7 @@ static const char *MSG_RAWBLOCK  = "rawblock";
 static const char *MSG_RAWTX     = "rawtx";
 
 // Internal function to send multipart message
-static int zmq_send_multipart_keepalive(void *sock, const void* data, size_t size, ...)
+static int zmq_send_multipart(void *sock, const void* data, size_t size, ...)
 {
     va_list args;
     va_start(args, size);
@@ -36,7 +36,7 @@ static int zmq_send_multipart_keepalive(void *sock, const void* data, size_t siz
 
         data = va_arg(args, const void*);
 
-        rc = zmq_msg_send(&msg, sock, ZMQ_SNDMORE);
+        rc = zmq_msg_send(&msg, sock, data ? ZMQ_SNDMORE : 0);
         if (rc == -1)
         {
             zmqError("Unable to send ZMQ msg");
@@ -127,26 +127,12 @@ bool CZMQAbstractPublishNotifier::SendMessage(const char *command, const void* d
 {
     assert(psocket);
 
-    /* send two parts, command & data */
-    int rc = zmq_send_multipart_keepalive(psocket, command, strlen(command), data, size, 0);
+    /* send three parts, command & data & a LE 4byte sequence number */
+    unsigned char msgseq[sizeof(uint32_t)];
+    WriteLE32(&msgseq[0], nSequence);
+    int rc = zmq_send_multipart(psocket, command, strlen(command), data, size, msgseq, (size_t)sizeof(uint32_t), (void*)0);
     if (rc == -1)
         return false;
-
-    /* create a LE 4byte sequence number and append it as last message part */
-    zmq_msg_t msg;
-    unsigned char msgseq[sizeof(int32_t)];
-    WriteLE32(&msgseq[0], nSequence);
-    rc = zmq_msg_init_size(&msg, sizeof(uint32_t));
-    void *buf = zmq_msg_data(&msg);
-    memcpy(buf, &msgseq, sizeof(uint32_t));
-    rc = zmq_msg_send(&msg, psocket, 0);
-    if (rc != sizeof(uint32_t))
-    {
-        zmqError("Unable to send ZMQ msg");
-        zmq_msg_close(&msg);
-        return false;
-    }
-    zmq_msg_close(&msg);
 
     /* increment memory only sequence number after sending */
     nSequence++;
