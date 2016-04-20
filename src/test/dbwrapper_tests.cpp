@@ -14,6 +14,8 @@
 using namespace std;
 using namespace boost::assign; // bring 'operator+=()' into scope
 using namespace boost::filesystem;
+
+static const uint64_t TESTDB_SIZE = 1024*1024;
          
 // Test if a string consists entirely of null characters
 bool is_null_key(const vector<unsigned char>& key) {
@@ -33,7 +35,7 @@ BOOST_AUTO_TEST_CASE(dbwrapper)
     for (int i = 0; i < 2; i++) {
         bool obfuscate = (bool)i;
         path ph = temp_directory_path() / unique_path();
-        CDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
+        CDBWrapper dbw(ph, (1 << 20), true, false, obfuscate, TESTDB_SIZE);
         char key = 'k';
         uint256 in = GetRandHash();
         uint256 res;
@@ -54,7 +56,7 @@ BOOST_AUTO_TEST_CASE(dbwrapper_batch)
     for (int i = 0; i < 2; i++) {
         bool obfuscate = (bool)i;
         path ph = temp_directory_path() / unique_path();
-        CDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
+        CDBWrapper dbw(ph, (1 << 20), true, false, obfuscate, TESTDB_SIZE);
 
         char key = 'i';
         uint256 in = GetRandHash();
@@ -91,7 +93,7 @@ BOOST_AUTO_TEST_CASE(dbwrapper_iterator)
     for (int i = 0; i < 2; i++) {
         bool obfuscate = (bool)i;
         path ph = temp_directory_path() / unique_path();
-        CDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
+        CDBWrapper dbw(ph, (1 << 20), true, false, obfuscate, TESTDB_SIZE);
 
         // The two keys are intentionally chosen for ordering
         char key = 'j';
@@ -134,7 +136,7 @@ BOOST_AUTO_TEST_CASE(existing_data_no_obfuscate)
     create_directories(ph);
 
     // Set up a non-obfuscated wrapper to write some initial data.
-    CDBWrapper* dbw = new CDBWrapper(ph, (1 << 10), false, false, false);
+    CDBWrapper* dbw = new CDBWrapper(ph, (1 << 10), false, false, false, TESTDB_SIZE);
     char key = 'k';
     uint256 in = GetRandHash();
     uint256 res;
@@ -147,7 +149,7 @@ BOOST_AUTO_TEST_CASE(existing_data_no_obfuscate)
     delete dbw;
 
     // Now, set up another wrapper that wants to obfuscate the same directory
-    CDBWrapper odbw(ph, (1 << 10), false, false, true);
+    CDBWrapper odbw(ph, (1 << 10), false, false, true, TESTDB_SIZE);
 
     // Check that the key/val we wrote with unobfuscated wrapper exists and 
     // is readable.
@@ -175,7 +177,7 @@ BOOST_AUTO_TEST_CASE(existing_data_reindex)
     create_directories(ph);
 
     // Set up a non-obfuscated wrapper to write some initial data.
-    CDBWrapper* dbw = new CDBWrapper(ph, (1 << 10), false, false, false);
+    CDBWrapper* dbw = new CDBWrapper(ph, (1 << 10), false, false, false, TESTDB_SIZE);
     char key = 'k';
     uint256 in = GetRandHash();
     uint256 res;
@@ -188,7 +190,7 @@ BOOST_AUTO_TEST_CASE(existing_data_reindex)
     delete dbw;
 
     // Simulate a -reindex by wiping the existing data store
-    CDBWrapper odbw(ph, (1 << 10), false, true, true);
+    CDBWrapper odbw(ph, (1 << 10), false, true, true, TESTDB_SIZE);
 
     // Check that the key/val we wrote with unobfuscated wrapper doesn't exist
     uint256 res2;

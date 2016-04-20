@@ -24,7 +24,7 @@ static void WipeLMDB(const boost::filesystem::path& path)
     }
 }
 
-CDBWrapper::CDBWrapper(const boost::filesystem::path& path, size_t nCacheSize, bool fMemory, bool fWipe, bool obfuscate):
+CDBWrapper::CDBWrapper(const boost::filesystem::path& path, size_t nCacheSize, bool fMemory, bool fWipe, bool obfuscate, uint64_t maxDbSize):
     env(NULL), dbi(0), rd_txn(0), wipe_on_close(false)
 {
     // TODO nCacheSize is actually ignored at the moment
@@ -34,7 +34,7 @@ CDBWrapper::CDBWrapper(const boost::filesystem::path& path, size_t nCacheSize, b
     // Increasing needs all transactions to be closed, so aborts the current
     // transaction. This means that the transaction needs to be restartable OR
     // we need to be able to estimate the maximum size of a transaction upfront.
-    dbwrapper_private::HandleError(mdb_env_set_mapsize(env, 8ULL*1024*1024*1024)); // TODO
+    dbwrapper_private::HandleError(mdb_env_set_mapsize(env, maxDbSize));
     // Turn off readahead. May help random read performance when the DB is larger than RAM and system RAM is full.
     unsigned int flags = MDB_NORDAHEAD;
     if (fMemory) {
@@ -43,11 +43,11 @@ CDBWrapper::CDBWrapper(const boost::filesystem::path& path, size_t nCacheSize, b
         flags |= MDB_NOSYNC|MDB_WRITEMAP;
     } else {
         // Sync using mdb_env_sync explicitly.
-        flags |= MDB_MAPASYNC|MDB_WRITEMAP;
+        flags |= 0; //MDB_MAPASYNC|MDB_WRITEMAP;
     }
     if (fWipe)
         WipeLMDB(path);
-    LogPrintf("Opening LMDB in %s\n", path.string());
+    LogPrintf("Opening LMDB in %s (maxsize %d)\n", path.string(), maxDbSize);
     boost::filesystem::create_directories(path);
     dbwrapper_private::HandleError(mdb_env_open(env, path.string().c_str(), flags, 0644));
     // Open database
