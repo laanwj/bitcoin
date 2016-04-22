@@ -133,6 +133,11 @@ Jonasschnelli's reindex benchmark (SSD, 4-core):
 
 leveldb was 1.2842709773× faster.
 
+### Potential causes of slowness
+
+- Profiling shows bitcoind with lmdb spends a lot of time in `fdatasync`. As a sync if done after every write transaction,
+  and lmdb databases (unlike leveldb databases) are a single r/w file, everything blocks on this.
+
 todo
 ------
 
