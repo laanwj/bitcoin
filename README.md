@@ -42,7 +42,8 @@ what is nice
 - lmdb database is stored in `chainstate2` and `index2` directories as to not overlap with leveldb
   databases.
 
-- initial results show that it is faster (see performance results below)
+- initial results show that it is faster in some cases but slower in other - more research is needed
+  into when and why - see performance results below.
 
 issues
 ---------
@@ -117,7 +118,7 @@ Sync performance:
 
 Something like 40% faster.
 
-Jonasschnelli's reindex benchmark (SSD, 4-core):
+Jonasschnelli's reindex benchmark (SSD, 4-core, non-VM):
 
     ##LMDB / -reindex (default dbcache)
     jonasschnelli@bitcoinsrv:~$ cat ~/.bitcoinlmdb/debug.log | grep 'v0.12.99\|progress=1'
@@ -137,6 +138,15 @@ leveldb was 1.2842709773× faster.
 
 - Profiling shows bitcoind with lmdb spends a lot of time in `fdatasync`. As a sync if done after every write transaction,
   and lmdb databases (unlike leveldb databases) are a single r/w file, everything blocks on this.
+
+  - `fdatasync` seems especially slow in VMs, hanging the whole system for the duration of the operation.
+
+Pieter Wuille's theory:
+```
+<sipa> here is a theory: lmdb uses mmap, and we use bulk writes often. this means that the OS can do a better job of scheduling the necessary writes to disk than the single-threaded, linear, synchronous approach used by leveldb
+<sipa> if your latency for disk writes is low, that perhaps means that the benefit from lmdb is smaller
+<sipa> as on an ssd a random write isnas fast as a linear
+```
 
 todo
 ------
