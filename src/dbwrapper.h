@@ -5,6 +5,8 @@
 #ifndef BITCOIN_DBWRAPPER_H
 #define BITCOIN_DBWRAPPER_H
 
+#define DB_BATCH_LINEAR
+
 #include "clientversion.h"
 #include "serialize.h"
 #include "streams.h"
@@ -14,8 +16,9 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include <leveldb/db.h>
-#include <leveldb/write_batch.h>
+#ifdef DB_BATCH_LINEAR
+#include <deque>
+#endif
 
 class dbwrapper_error : public std::runtime_error
 {
@@ -25,30 +28,26 @@ public:
 
 class CDBWrapper;
 
-/** These should be considered an implementation detail of the specific database.
- */
-namespace dbwrapper_private {
-
-/** Handle database error by throwing dbwrapper_error exception.
- */
-void HandleError(const leveldb::Status& status);
-
-/** Work around circular dependency, as well as for testing in dbwrapper_tests.
- * Database obfuscation should be considered an implementation detail of the
- * specific database.
- */
-const std::vector<unsigned char>& GetObfuscateKey(const CDBWrapper &w);
-
-};
+typedef std::vector<uint8_t> DBDataItem; // This MUST be uint8_t, with char (signed on x86) the sorting order will be broken
+typedef std::map<DBDataItem, DBDataItem> DBMap;
 
 /** Batch of changes queued to be written to a CDBWrapper */
+#ifdef DB_BATCH_LINEAR
 class CDBBatch
 {
     friend class CDBWrapper;
+    struct BatchItem {
+    public:
+        BatchItem(bool delIn=false): del(delIn) {}
+
+        bool del;
+        DBDataItem key;
+        DBDataItem value;
+    };
+    std::deque<BatchItem> delta;
 
 private:
     const CDBWrapper &parent;
-    leveldb::WriteBatch batch;
 
 public:
     /**
@@ -59,45 +58,106 @@ public:
     template <typename K, typename V>
     void Write(const K& key, const V& value)
     {
-        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        delta.push_back(BatchItem(false)); // c++11 emplace_back
+        BatchItem &item = delta.back();
+
+        CWDataStream<DBDataItem> ssKey(item.key, SER_DISK, CLIENT_VERSION);
         ssKey.reserve(ssKey.GetSerializeSize(key));
         ssKey << key;
-        leveldb::Slice slKey(&ssKey[0], ssKey.size());
 
-        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        CWDataStream<DBDataItem> ssValue(item.value, SER_DISK, CLIENT_VERSION);
         ssValue.reserve(ssValue.GetSerializeSize(value));
         ssValue << value;
-        ssValue.Xor(dbwrapper_private::GetObfuscateKey(parent));
-        leveldb::Slice slValue(&ssValue[0], ssValue.size());
-
-        batch.Put(slKey, slValue);
     }
 
     template <typename K>
     void Erase(const K& key)
     {
-        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        delta.push_back(BatchItem(true)); // c++11 emplace_back
+        BatchItem &item = delta.back();
+
+        CWDataStream<DBDataItem> ssKey(item.key, SER_DISK, CLIENT_VERSION);
         ssKey.reserve(ssKey.GetSerializeSize(key));
         ssKey << key;
-        leveldb::Slice slKey(&ssKey[0], ssKey.size());
-
-        batch.Delete(slKey);
     }
 };
+#else
+class CDBBatch
+{
+    friend class CDBWrapper;
+    struct BatchItem {
+    public:
+        BatchItem(bool delIn=false): del(delIn) {}
+
+        bool del;
+        DBDataItem value;
+
+        void swap(BatchItem &o)
+        {
+            bool tmpdel = del;
+            del = o.del;
+            o.del = tmpdel;
+            value.swap(o.value);
+        }
+    };
+    std::map<DBDataItem, BatchItem> delta;
+
+private:
+    const CDBWrapper &parent;
+
+public:
+    /**
+     * @param[in] parent    CDBWrapper that this batch is to be submitted to
+     */
+    CDBBatch(const CDBWrapper &parent) : parent(parent) { };
+
+    template <typename K, typename V>
+    void Write(const K& key, const V& value)
+    {
+        DBDataItem slKey;
+        BatchItem item(false);
+        CWDataStream<DBDataItem> ssKey(slKey, SER_DISK, CLIENT_VERSION);
+        ssKey.reserve(ssKey.GetSerializeSize(key));
+        ssKey << key;
+
+        CWDataStream<DBDataItem> ssValue(item.value, SER_DISK, CLIENT_VERSION);
+        ssValue.reserve(ssValue.GetSerializeSize(value));
+        ssValue << value;
+
+        std::pair<std::map<DBDataItem, BatchItem>::iterator, bool> rv = delta.insert(std::make_pair(slKey, BatchItem()));
+        rv.first->second.swap(item);
+    }
+
+    template <typename K>
+    void Erase(const K& key)
+    {
+        DBDataItem slKey;
+        BatchItem item(true);
+        CWDataStream<DBDataItem> ssKey(slKey, SER_DISK, CLIENT_VERSION);
+        ssKey.reserve(ssKey.GetSerializeSize(key));
+        ssKey << key;
+
+        std::pair<std::map<DBDataItem, BatchItem>::iterator, bool> rv = delta.insert(std::make_pair(slKey, BatchItem()));
+        rv.first->second.swap(item);
+    }
+};
+#endif
 
 class CDBIterator
 {
 private:
     const CDBWrapper &parent;
-    leveldb::Iterator *piter;
+    DBMap::const_iterator piter;
 
+    /* seek to key, or the first item after it lexicographically */
+    void Seek(const DBDataItem &key);
 public:
 
     /**
      * @param[in] parent           Parent CDBWrapper instance.
      * @param[in] piterIn          The original leveldb iterator.
      */
-    CDBIterator(const CDBWrapper &parent, leveldb::Iterator *piterIn) :
+    CDBIterator(const CDBWrapper &parent, DBMap::const_iterator piterIn) :
         parent(parent), piter(piterIn) { };
     ~CDBIterator();
 
@@ -106,19 +166,18 @@ public:
     void SeekToFirst();
 
     template<typename K> void Seek(const K& key) {
-        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        DBDataItem slKey;
+        CWDataStream<DBDataItem> ssKey(slKey, SER_DISK, CLIENT_VERSION);
         ssKey.reserve(ssKey.GetSerializeSize(key));
         ssKey << key;
-        leveldb::Slice slKey(&ssKey[0], ssKey.size());
-        piter->Seek(slKey);
+        Seek(slKey);
     }
 
     void Next();
 
     template<typename K> bool GetKey(K& key) {
-        leveldb::Slice slKey = piter->key();
         try {
-            CDataStream ssKey(slKey.data(), slKey.data() + slKey.size(), SER_DISK, CLIENT_VERSION);
+            CRDataStream<DBDataItem> ssKey(piter->first, SER_DISK, CLIENT_VERSION);
             ssKey >> key;
         } catch (const std::exception&) {
             return false;
@@ -127,14 +186,12 @@ public:
     }
 
     unsigned int GetKeySize() {
-        return piter->key().size();
+        return piter->first.size();
     }
 
     template<typename V> bool GetValue(V& value) {
-        leveldb::Slice slValue = piter->value();
         try {
-            CDataStream ssValue(slValue.data(), slValue.data() + slValue.size(), SER_DISK, CLIENT_VERSION);
-            ssValue.Xor(dbwrapper_private::GetObfuscateKey(parent));
+            CRDataStream<DBDataItem> ssValue(piter->second, SER_DISK, CLIENT_VERSION);
             ssValue >> value;
         } catch (const std::exception&) {
             return false;
@@ -143,47 +200,18 @@ public:
     }
 
     unsigned int GetValueSize() {
-        return piter->value().size();
+        return piter->second.size();
     }
 
 };
 
 class CDBWrapper
 {
-    friend const std::vector<unsigned char>& dbwrapper_private::GetObfuscateKey(const CDBWrapper &w);
 private:
-    //! custom environment this database is using (may be NULL in case of default environment)
-    leveldb::Env* penv;
+    std::string filename;
+    DBMap data;
 
-    //! database options used
-    leveldb::Options options;
-
-    //! options used when reading from the database
-    leveldb::ReadOptions readoptions;
-
-    //! options used when iterating over values of the database
-    leveldb::ReadOptions iteroptions;
-
-    //! options used when writing to the database
-    leveldb::WriteOptions writeoptions;
-
-    //! options used when sync writing to the database
-    leveldb::WriteOptions syncoptions;
-
-    //! the database itself
-    leveldb::DB* pdb;
-
-    //! a key used for optional XOR-obfuscation of the database
-    std::vector<unsigned char> obfuscate_key;
-
-    //! the key under which the obfuscation key is stored
-    static const std::string OBFUSCATE_KEY_KEY;
-
-    //! the length of the obfuscate key in number of bytes
-    static const unsigned int OBFUSCATE_KEY_NUM_BYTES;
-
-    std::vector<unsigned char> CreateObfuscateKey() const;
-
+    friend class CDBIterator;
 public:
     /**
      * @param[in] path        Location in the filesystem where leveldb data will be stored.
@@ -199,22 +227,16 @@ public:
     template <typename K, typename V>
     bool Read(const K& key, V& value) const
     {
-        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        DBDataItem slKey;
+        CWDataStream<DBDataItem> ssKey(slKey, SER_DISK, CLIENT_VERSION);
         ssKey.reserve(ssKey.GetSerializeSize(key));
         ssKey << key;
-        leveldb::Slice slKey(&ssKey[0], ssKey.size());
 
-        std::string strValue;
-        leveldb::Status status = pdb->Get(readoptions, slKey, &strValue);
-        if (!status.ok()) {
-            if (status.IsNotFound())
-                return false;
-            LogPrintf("LevelDB read failure: %s\n", status.ToString());
-            dbwrapper_private::HandleError(status);
-        }
+        DBMap::const_iterator i = data.find(slKey);
+        if (i == data.end())
+            return false;
         try {
-            CDataStream ssValue(strValue.data(), strValue.data() + strValue.size(), SER_DISK, CLIENT_VERSION);
-            ssValue.Xor(obfuscate_key);
+            CRDataStream<DBDataItem> ssValue(i->second, SER_DISK, CLIENT_VERSION);
             ssValue >> value;
         } catch (const std::exception&) {
             return false;
@@ -233,20 +255,11 @@ public:
     template <typename K>
     bool Exists(const K& key) const
     {
-        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        DBDataItem slKey;
+        CWDataStream<DBDataItem> ssKey(slKey, SER_DISK, CLIENT_VERSION);
         ssKey.reserve(ssKey.GetSerializeSize(key));
         ssKey << key;
-        leveldb::Slice slKey(&ssKey[0], ssKey.size());
-
-        std::string strValue;
-        leveldb::Status status = pdb->Get(readoptions, slKey, &strValue);
-        if (!status.ok()) {
-            if (status.IsNotFound())
-                return false;
-            LogPrintf("LevelDB read failure: %s\n", status.ToString());
-            dbwrapper_private::HandleError(status);
-        }
-        return true;
+        return data.find(slKey) != data.end();
     }
 
     template <typename K>
@@ -259,11 +272,7 @@ public:
 
     bool WriteBatch(CDBBatch& batch, bool fSync = false);
 
-    // not available for LevelDB; provide for compatibility with BDB
-    bool Flush()
-    {
-        return true;
-    }
+    bool Flush() { return true; }
 
     bool Sync()
     {
@@ -273,7 +282,7 @@ public:
 
     CDBIterator *NewIterator()
     {
-        return new CDBIterator(*this, pdb->NewIterator(iteroptions));
+        return new CDBIterator(*this, data.end());
     }
 
     /**
