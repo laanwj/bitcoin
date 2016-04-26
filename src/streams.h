@@ -57,12 +57,10 @@ public:
         Init(nTypeIn, nVersionIn);
     }
 
-#if !defined(_MSC_VER) || _MSC_VER >= 1300
     CDataStream(const char* pbegin, const char* pend, int nTypeIn, int nVersionIn) : vch(pbegin, pend)
     {
         Init(nTypeIn, nVersionIn);
     }
-#endif
 
     CDataStream(const vector_type& vchIn, int nTypeIn, int nVersionIn) : vch(vchIn.begin(), vchIn.end())
     {
@@ -135,7 +133,6 @@ public:
             vch.insert(it, first, last);
     }
 
-#if !defined(_MSC_VER) || _MSC_VER >= 1300
     void insert(iterator it, const char* first, const char* last)
     {
         assert(last - first >= 0);
@@ -148,7 +145,6 @@ public:
         else
             vch.insert(it, first, last);
     }
-#endif
 
     iterator erase(iterator it)
     {
@@ -324,7 +320,242 @@ public:
 };
 
 
+/** Stream-like interface from existing data, for zero-copy reading.
+ *
+ * TODO: vector_type should really be slice_type - we don't need any vector
+ * functionality, just a sized memory buffer.
+ */
+template <typename vector_type> class CRDataStream
+{
+protected:
+    const vector_type &vch;
+    unsigned int nReadPos;
+public:
+    int nType;
+    int nVersion;
 
+    typedef typename vector_type::allocator_type   allocator_type;
+    typedef typename vector_type::size_type        size_type;
+    typedef typename vector_type::difference_type  difference_type;
+    typedef typename vector_type::reference        reference;
+    typedef typename vector_type::const_reference  const_reference;
+    typedef typename vector_type::value_type       value_type;
+    typedef typename vector_type::iterator         iterator;
+    typedef typename vector_type::const_iterator   const_iterator;
+    typedef typename vector_type::reverse_iterator reverse_iterator;
+
+    explicit CRDataStream(const vector_type &vchIn, int nTypeIn, int nVersionIn):
+        vch(vchIn)
+    {
+        Init(nTypeIn, nVersionIn);
+    }
+
+    void Init(int nTypeIn, int nVersionIn)
+    {
+        nReadPos = 0;
+        nType = nTypeIn;
+        nVersion = nVersionIn;
+    }
+
+    std::string str() const
+    {
+        return (std::string(begin(), end()));
+    }
+
+
+    //
+    // Vector subset
+    //
+    const_iterator begin() const                     { return vch.begin() + nReadPos; }
+    const_iterator end() const                       { return vch.end(); }
+    size_type size() const                           { return vch.size() - nReadPos; }
+    bool empty() const                               { return vch.size() == nReadPos; }
+    const_reference operator[](size_type pos) const  { return vch[pos + nReadPos]; }
+
+    bool Rewind(size_type n)
+    {
+        // Rewind by n characters if the buffer hasn't been compacted yet
+        if (n > nReadPos)
+            return false;
+        nReadPos -= n;
+        return true;
+    }
+
+
+    //
+    // Stream subset
+    //
+    bool eof() const             { return size() == 0; }
+    CRDataStream* rdbuf()         { return this; }
+    int in_avail()               { return size(); }
+
+    void SetType(int n)          { nType = n; }
+    int GetType()                { return nType; }
+    void SetVersion(int n)       { nVersion = n; }
+    int GetVersion()             { return nVersion; }
+    void ReadVersion()           { *this >> nVersion; }
+
+    CRDataStream& read(char* pch, size_t nSize)
+    {
+        // Read from the beginning of the buffer
+        unsigned int nReadPosNext = nReadPos + nSize;
+        if (nReadPosNext >= vch.size())
+        {
+            if (nReadPosNext > vch.size())
+            {
+                throw std::ios_base::failure("CRDataStream::read(): end of data");
+            }
+            memcpy(pch, &vch[nReadPos], nSize);
+            nReadPos = 0;
+            return (*this);
+        }
+        memcpy(pch, &vch[nReadPos], nSize);
+        nReadPos = nReadPosNext;
+        return (*this);
+    }
+
+    CRDataStream& ignore(int nSize)
+    {
+        // Ignore from the beginning of the buffer
+        assert(nSize >= 0);
+        unsigned int nReadPosNext = nReadPos + nSize;
+        if (nReadPosNext >= vch.size())
+        {
+            if (nReadPosNext > vch.size())
+                throw std::ios_base::failure("CRDataStream::ignore(): end of data");
+            nReadPos = 0;
+            return (*this);
+        }
+        nReadPos = nReadPosNext;
+        return (*this);
+    }
+
+    template<typename T>
+    CRDataStream& operator>>(T& obj)
+    {
+        // Unserialize from this stream
+        ::Unserialize(*this, obj, nType, nVersion);
+        return (*this);
+    }
+};
+
+/** Stream-like interface into existing vector-like object, for zero-copy writing.
+ */
+template <typename vector_type> class CWDataStream
+{
+protected:
+    vector_type &vch;
+public:
+    int nType;
+    int nVersion;
+
+    typedef typename vector_type::allocator_type   allocator_type;
+    typedef typename vector_type::size_type        size_type;
+    typedef typename vector_type::difference_type  difference_type;
+    typedef typename vector_type::reference        reference;
+    typedef typename vector_type::const_reference  const_reference;
+    typedef typename vector_type::value_type       value_type;
+    typedef typename vector_type::iterator         iterator;
+    typedef typename vector_type::const_iterator   const_iterator;
+    typedef typename vector_type::reverse_iterator reverse_iterator;
+
+    explicit CWDataStream(vector_type &vchIn, int nTypeIn, int nVersionIn):
+        vch(vchIn)
+    {
+        Init(nTypeIn, nVersionIn);
+    }
+
+    void Init(int nTypeIn, int nVersionIn)
+    {
+        nType = nTypeIn;
+        nVersion = nVersionIn;
+    }
+
+    CWDataStream& operator+=(const CWDataStream& b)
+    {
+        vch.insert(vch.end(), b.begin(), b.end());
+        return *this;
+    }
+
+    friend CWDataStream operator+(const CWDataStream& a, const CWDataStream& b)
+    {
+        CWDataStream ret = a;
+        ret += b;
+        return (ret);
+    }
+
+    std::string str() const
+    {
+        return (std::string(begin(), end()));
+    }
+
+
+    //
+    // Vector subset
+    //
+    const_iterator begin() const                     { return vch.begin(); }
+    iterator begin()                                 { return vch.begin(); }
+    const_iterator end() const                       { return vch.end(); }
+    iterator end()                                   { return vch.end(); }
+    size_type size() const                           { return vch.size(); }
+    bool empty() const                               { return vch.empty(); }
+    void resize(size_type n, value_type c=0)         { vch.resize(n, c); }
+    void reserve(size_type n)                        { vch.reserve(n); }
+    const_reference operator[](size_type pos) const  { return vch[pos]; }
+    reference operator[](size_type pos)              { return vch[pos]; }
+    void clear()                                     { vch.clear(); }
+    iterator insert(iterator it, const char& x=char()) { return vch.insert(it, x); }
+    void insert(iterator it, size_type n, const char& x) { vch.insert(it, n, x); }
+    void insert(iterator it, std::vector<char>::const_iterator first, std::vector<char>::const_iterator last) { vch.insert(it, first, last); }
+    void insert(iterator it, const char* first, const char* last) { vch.insert(it, first, last); }
+    iterator erase(iterator it) { return vch.erase(it); }
+    iterator erase(iterator first, iterator last) { return vch.erase(first, last); }
+
+
+    //
+    // Stream subset
+    //
+    bool eof() const             { return size() == 0; }
+    CWDataStream* rdbuf()         { return this; }
+    int in_avail()               { return size(); }
+
+    void SetType(int n)          { nType = n; }
+    int GetType()                { return nType; }
+    void SetVersion(int n)       { nVersion = n; }
+    int GetVersion()             { return nVersion; }
+    void ReadVersion()           { *this >> nVersion; }
+    void WriteVersion()          { *this << nVersion; }
+
+    CWDataStream& write(const char* pch, size_t nSize)
+    {
+        // Write to the end of the buffer
+        vch.insert(vch.end(), pch, pch + nSize);
+        return (*this);
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const
+    {
+        // Special case: stream << stream concatenates like stream += stream
+        if (!vch.empty())
+            s.write((char*)&vch[0], vch.size() * sizeof(vch[0]));
+    }
+
+    template<typename T>
+    unsigned int GetSerializeSize(const T& obj)
+    {
+        // Tells the size of the object if serialized to this stream
+        return ::GetSerializeSize(obj, nType, nVersion);
+    }
+
+    template<typename T>
+    CWDataStream& operator<<(const T& obj)
+    {
+        // Serialize to this stream
+        ::Serialize(*this, obj, nType, nVersion);
+        return (*this);
+    }
+};
 
 
 
