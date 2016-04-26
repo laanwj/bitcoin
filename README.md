@@ -1,82 +1,45 @@
-Bitcoin Core integration/staging tree
+Dummy database experiment
 =====================================
 
-[![Build Status](https://travis-ci.org/bitcoin/bitcoin.svg?branch=master)](https://travis-ci.org/bitcoin/bitcoin)
+disclaimer
+----------
 
-https://bitcoincore.org
+This is part of a blue-skies experiment, it is by no means recommended as a
+replacement for the current leveldb usage.
 
-What is Bitcoin?
-----------------
+Not only is this software PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND as
+specified in `COPYING`, this software has *negative* warranty. If you manage to
+suffer financial or other losses due to this code I demand compensation for
+feelings of misplaced guilt.
 
-Bitcoin is an experimental new digital currency that enables instant payments to
-anyone, anywhere in the world. Bitcoin uses peer-to-peer technology to operate
-with no central authority: managing transactions and issuing money are carried
-out collectively by the network. Bitcoin Core is the name of open source
-software which enables the use of this currency.
+what is this?
+-------------
 
-For more information, as well as an immediately useable, binary version of
-the Bitcoin Core software, see https://bitcoin.org/en/download, or read the
-[original whitepaper](https://bitcoincore.org/bitcoin.pdf).
+This replaces the block index and UTXO database with an in-memory data structure
+which is read from disk at start, and written to disk at shutdown. There are no
+intermediate flushes.
 
-License
--------
+what is this for?
+-----------------
 
-Bitcoin Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
-information or see https://opensource.org/licenses/MIT.
+Accomplish the same as `-dbcache=8000` (e.g. do everything in memory) but with
+less memory usage. The backend database stores the coins data in serialized
+format just like an actual database would.
 
-Development Process
--------------------
+This is also useful for benchmarking and profiling, as it answers the question
+what performance could be achieved with the minimum possible database overhead
+and latency: no I/O at all except at startup and shutdown.
 
-The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoin/bitcoin/tags) are created
-regularly to indicate new official, stable release versions of Bitcoin Core.
+This is more realistic than using a huge dbcache because this does measure
+serialization overhead.
 
-The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+some results
+-------------
 
-The developer [mailing list](https://lists.linuxfoundation.org/mailman/listinfo/bitcoin-dev)
-should be used to discuss complicated or controversial changes before working
-on a patch set.
+to do
+------
 
-Developer IRC can be found on Freenode at #bitcoin-core-dev.
+- Memory usage could potentially be reduced even further by using a different map implementation.
+  There are a few mentioned here: https://stackoverflow.com/questions/3300525/super-high-performance-c-c-hash-map-table-dictionary
+  For example, Google sparsehash outperformed all the competing maps in memory usage at some point.
 
-Testing
--------
-
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test on short notice. Please be patient and help out by testing
-other people's pull requests, and remember this is a security-critical project where any mistake might cost people
-lots of money.
-
-### Automated Testing
-
-Developers are strongly encouraged to write [unit tests](/doc/unit-tests.md) for new code, and to
-submit new unit tests for old code. Unit tests can be compiled and run
-(assuming they weren't disabled in configure) with: `make check`
-
-There are also [regression and integration tests](/qa) of the RPC interface, written
-in Python, that are run automatically on the build server.
-These tests can be run (if the [test dependencies](/qa) are installed) with: `qa/pull-tester/rpc-tests.py`
-
-The Travis CI system makes sure that every pull request is built for Windows
-and Linux, OS X, and that unit and sanity tests are automatically run.
-
-### Manual Quality Assurance (QA) Testing
-
-Changes should be tested by somebody other than the developer who wrote the
-code. This is especially important for large or high-risk changes. It is useful
-to add a test plan to the pull request description if testing the changes is
-not straightforward.
-
-Translations
-------------
-
-Changes to translations as well as new translations can be submitted to
-[Bitcoin Core's Transifex page](https://www.transifex.com/projects/p/bitcoin/).
-
-Translations are periodically pulled from Transifex and merged into the git repository. See the
-[translation process](doc/translation_process.md) for details on how this works.
-
-**Important**: We do not accept translation changes as GitHub pull requests because the next
-pull from Transifex would automatically overwrite them again.
-
-Translators should also subscribe to the [mailing list](https://groups.google.com/forum/#!forum/bitcoin-translators).
