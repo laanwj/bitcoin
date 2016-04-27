@@ -212,6 +212,8 @@ if test "x$enable_debug" = xyes; then
         CXXFLAGS="$CXXFLAGS -g3 -O0"
     fi
 fi
+CFLAGS="$CFLAGS -msse4.2"
+CXXFLAGS="$CXXFLAGS -msse4.2"
 
 ERROR_CXXFLAGS=
 if test "x$enable_werror" = "xyes"; then
