@@ -36,6 +36,11 @@ serialization overhead.
 some results
 -------------
 
+other info
+-----------
+
+-  use`chainstate3` and `index3` directory names to avoid overlap with the leveldb or lmdb databases.
+
 to do
 ------
 
