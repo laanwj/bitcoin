@@ -17,7 +17,8 @@ In progress
 
 - [2016_04_leveldb_sse42_crc32c_test](https://github.com/laanwj/bitcoin/tree/2016_04_leveldb_sse42_crc32c_test)
   Use SSE4.2 CRC32C instructions in LevelDB. LevelDB uses this cyclic redundancy check for integrity
-  verification.
+  verification. See also [crcbench](https://github.com/laanwj/crcbench), to see the difference
+  in raw throughput.
 
 Ready for review
 --------------------
