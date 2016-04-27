@@ -27,3 +27,20 @@ Ready for review
   [PR #7892](https://github.com/bitcoin/bitcoin/pull/7892) and upstream
   [PR #22](https://github.com/jgarzik/univalue/pull/22).
 
+  - See also: [Univalue fuzzing branch](https://github.com/laanwj/univalue/tree/2015_11_unifuzz),
+    and [instructions](https://gist.github.com/laanwj/68551528b7ae641ccaeb519566ca67c7) for building
+    univalue with afl-fuzz.
+
+Documents and notes
+--------------------
+
+- [Reducing bitcoind memory usage](https://gist.github.com/laanwj/efe29c7661ce9b6620a7).
+
+Scripts
+--------
+
+- [Start bitcoind in a screen in a debugger](https://gist.github.com/laanwj/29bc141fb8d10608651c).
+- [Measure compilation speed](https://gist.github.com/laanwj/108877a28ec03836568a) as well
+ as other statistics such as maximum memory usage per compilation unit. Original
+ [PR #6658](https://github.com/bitcoin/bitcoin/issues/6658#issuecomment-144643696).
+
