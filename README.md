@@ -73,4 +73,10 @@ Scripts
 - [Measure compilation speed](https://gist.github.com/laanwj/108877a28ec03836568a) as well
  as other statistics such as maximum memory usage per compilation unit. Original
  [PR #6658](https://github.com/bitcoin/bitcoin/issues/6658#issuecomment-144643696).
+- [git-show-merge](https://gist.github.com/laanwj/ef8a6dcbb02313442462): show
+  in which pull request a certain commit was merged into the current branch.
+- [blockdb-troubleshoot](https://github.com/laanwj/blockdb-troubleshoot):
+  collected bitcoin block database troubleshooting tools (from Python).
+- [bitcoin-submittx](https://github.com/laanwj/bitcoin-submittx):
+  stand-alone Bitcoin transaction submission tool (in Python).
 
