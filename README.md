@@ -28,6 +28,27 @@ In progress
   discussion in [PR #7753](https://github.com/bitcoin/bitcoin/pull/7753)). To
   be released soon.
 
+### HTTP streaming
+
+This is still very unstable.
+
+- Add a streaming API to the HTTP server. This allows streaming data to the
+  client chunk by chunk, which is useful when not the entire data is available
+  at once or it is huge and wouldn't fit (efficiently) in memory.
+
+- Allows downloading the entire UTXO set through `/rest/utxoset`. This is a raw
+  dump of all outputs, the state normally hashed by `gettxoutsetinfo`. The dump
+  is performed in the background by making use of leveldb snapshotting, so
+  without keeping cs_main locked.
+    - This can be useful for analysis purposes if you don't want to mess with
+      bitcoin core's database
+    - Filename (via content-disposition) is
+      `utxoset-<height>-<bestblockhash>.dat`. Also a custom `X-Best-Block` and
+      `X-Block-Height` header is added.
+
+See [PR #7759](https://github.com/bitcoin/bitcoin/pull/7759) or the branch
+[2016_03_utxo_streaming](https://github.com/laanwj/bitcoin/tree/2016_03_utxo_streaming).
+
 Ready for review
 --------------------
 
