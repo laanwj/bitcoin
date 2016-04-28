@@ -20,6 +20,14 @@ In progress
   verification. See also [crcbench](https://github.com/laanwj/crcbench), to see the difference
   in raw throughput.
 
+### Statistics and notifications
+
+- [zmq mempool notifications](https://github.com/bitcoin/bitcoin/pull/7753): Add notifications when transactions enter or leave the mempool.
+
+- bc-monitor: ncurses (console) tool for monitoring a bitcoind instance (see
+  discussion in [PR #7753](https://github.com/bitcoin/bitcoin/pull/7753)). To
+  be released soon.
+
 Ready for review
 --------------------
 
