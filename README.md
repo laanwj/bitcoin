@@ -79,4 +79,5 @@ Scripts
   collected bitcoin block database troubleshooting tools (from Python).
 - [bitcoin-submittx](https://github.com/laanwj/bitcoin-submittx):
   stand-alone Bitcoin transaction submission tool (in Python).
+- [JSON-RPC batching example](https://gist.github.com/laanwj/f2e0238bd151d5365c07bdd03467588b).
 
