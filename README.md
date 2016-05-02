@@ -36,6 +36,19 @@ serialization overhead.
 some results
 -------------
 
+I've timed a few reindexes up to block 407838 on an 8-core AMD machine:
+
+1) Using `-dbcache=8000`: total 03:10:44 (11444s)
+
+2) Using dummydb, default `-dbcache=100`: total 04:26:06 (15966s)
+
+3) Using leveldb, default `-dbcache=100`: total 09:04:34 (32674s)
+
+So as expected, a full dbcache is fastest. This keeps all the unspent coin data
+in memory in expanded form. The dummydb is somewhat slower: there is
+serialization and deserialization overhead. Using on-disk leveldb is the
+slowest option, due to I/O latency and database overhead.
+
 other info
 -----------
 
