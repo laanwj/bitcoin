@@ -77,17 +77,20 @@ int main(int argc, char* argv[])
     CAutoFile ss(file, SER_NETWORK, PROTOCOL_VERSION);
     ss << pcursor->GetBestBlock();
     printf("Best block is %s\n", pcursor->GetBestBlock().ToString().c_str());
+    int key_count = 0;
     while (pcursor->Valid()) {
         uint256 key;
         CCoins coins;
         if (pcursor->GetKey(key) && pcursor->GetValue(coins)) {
             ss << key << coins;
+            key_count += 1;
         } else {
             printf("Error: unable to read value\n");
             exit(1);
         }
         pcursor->Next();
     }
+    printf("Dumped %i records\n", (int) key_count);
 
     return 0;
 }
