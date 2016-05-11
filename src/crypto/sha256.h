@@ -23,6 +23,17 @@ public:
     CSHA256& Write(const unsigned char* data, size_t len);
     void Finalize(unsigned char hash[OUTPUT_SIZE]);
     CSHA256& Reset();
+
+    enum class Impl {
+        BASIC,    //!< Basic C-based implementation
+        SSE4,     //!< SSE4 assembly
+        AVX,      //!< AVX instructions
+        RORX,     //!< RORX instruction
+        RORX_X8MS //!< RORX 64-bit wide
+    };
+
+    //! Globally set SHA256 implementation
+    static void SetImplementation(Impl i);
 };
 
 #endif // BITCOIN_CRYPTO_SHA256_H
