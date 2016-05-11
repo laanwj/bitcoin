@@ -237,7 +237,11 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/sha256.cpp \
   crypto/sha256.h \
   crypto/sha512.cpp \
-  crypto/sha512.h
+  crypto/sha512.h \
+  crypto/sha256_avx1.asm \
+  crypto/sha256_avx2_rorx2.asm \
+  crypto/sha256_avx2_rorx8.asm \
+  crypto/sha256_sse4.asm
 
 # consensus: shared between all executables that validate any consensus rules.
 libbitcoin_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
@@ -471,6 +475,9 @@ endif
 if EMBEDDED_LEVELDB
 include Makefile.leveldb.include
 endif
+
+.asm.o:
+	yasm -f x64 -f elf64 -X gnu -g dwarf2 -D LINUX -o $@ $<
 
 if ENABLE_TESTS
 include Makefile.test.include
