@@ -1,82 +1,93 @@
-Bitcoin Core integration/staging tree
+SHA256 performance experiment
 =====================================
 
-[![Build Status](https://travis-ci.org/bitcoin/bitcoin.svg?branch=master)](https://travis-ci.org/bitcoin/bitcoin)
+what is this
+-------------
 
-https://bitcoincore.org
+Profiling has shown that a non-trivial amount of time in bitcoind is spent in computing SHA256 hashes,
+especially `sha256::Transform`. Speeding up this function should result in an overall performance gain.
 
-What is Bitcoin?
-----------------
+Intel has published[1](#ref1) optimized assembler variants of SHA256 for various of their extension
+instruction sets, namely SSE4, AVR, and RORX.
+Even more recent Intel CPUs have SHA extensions[2](#ref2), which add specific instructions for hash computation,
+but these are not considered here. 
 
-Bitcoin is an experimental digital currency that enables instant payments to
-anyone, anywhere in the world. Bitcoin uses peer-to-peer technology to operate
-with no central authority: managing transactions and issuing money are carried
-out collectively by the network. Bitcoin Core is the name of open source
-software which enables the use of this currency.
+In this experiment this assembly code was integrated into the Bitcoin Core
+source tree to measure performance.
 
-For more information, as well as an immediately useable, binary version of
-the Bitcoin Core software, see https://bitcoin.org/en/download, or read the
-[original whitepaper](https://bitcoincore.org/bitcoin.pdf).
+usage
+------
 
-License
--------
+```bash
+apt-get install yasm
+./configure CPPFLAGS="-DBENCH_RORX" # leave out the CPPFLAGS to skip RORX benchmark
+make -j10 src/bench/bench_bitcoin
+src/bench/bench_bitcoin
+```
 
-Bitcoin Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
-information or see https://opensource.org/licenses/MIT.
+results
+---------
 
-Development Process
--------------------
+### AMD FX-8370 Eight-Core Processor @ 4.00Ghz
 
-The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoin/bitcoin/tags) are created
-regularly to indicate new official, stable release versions of Bitcoin Core.
+Impl         | avg        | speed%
+------------ | ---------- | ---------
+basic |0.0044496   | 100
+sse4  |0.00388814  | 114
+avx   |0.00637428  | 70
 
-The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+On this CPU, it turns out that the AVX variant is slowest, even slower than the C implementation.
+The SSE4 variant is about 14% faster than the C implementation on average.
+RORX instructions are not supported.
 
-The developer [mailing list](https://lists.linuxfoundation.org/mailman/listinfo/bitcoin-dev)
-should be used to discuss complicated or controversial changes before working
-on a patch set.
+It will be interesting to see how this performs on Intel chips.
 
-Developer IRC can be found on Freenode at #bitcoin-core-dev.
+### Intel(R) Xeon(R) CPU E3-1275 v5 @ 3.60GHz
 
-Testing
--------
+Impl         | avg        | speed%
+------------ | ---------- | -------
+basic |0.00383578  | 100
+sse4  |0.0025789   | 149
+avx   |0.0025782   | 149
 
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test on short notice. Please be patient and help out by testing
-other people's pull requests, and remember this is a security-critical project where any mistake might cost people
-lots of money.
+The SSE4 variant is about 49% faster than the C implementation on this CPU.
+AVX result is no different from the SSE4 implementation within any realistic
+error bound.
 
-### Automated Testing
+### Intel(R) Core(TM) i7-4800MQ @ 2.6 GHz
 
-Developers are strongly encouraged to write [unit tests](src/test/README.md) for new code, and to
-submit new unit tests for old code. Unit tests can be compiled and run
-(assuming they weren't disabled in configure) with: `make check`. Further details on running
-and extending unit tests can be found in [/src/test/README.md](/src/test/README.md).
+Impl         | avg        | speed%
+------------ | ---------- | -------
+basic |0.00608469  | 100
+sse4  |0.00397209  | 153
+avx   |0.00398497  | 153
 
-There are also [regression and integration tests](/qa) of the RPC interface, written
-in Python, that are run automatically on the build server.
-These tests can be run (if the [test dependencies](/qa) are installed) with: `qa/pull-tester/rpc-tests.py`
+Here, too, AVX and SSE4 are virtually the same speed, however the SSE4 variant
+is 53% faster than the C implementation.
 
-The Travis CI system makes sure that every pull request is built for Windows, Linux, and OS X, and that unit/sanity tests are run automatically.
+### Haswell based Xeon
 
-### Manual Quality Assurance (QA) Testing
+Impl         | avg        | speed%
+------------ | ---------- | --------
+basic |0.00532052   | 100
+sse4  |0.003443     | 155
+avx   |0.0034525    | 154
+rorx  |0.002903     | 183
+rorx_x8ms|0.0028543 | 186
 
-Changes should be tested by somebody other than the developer who wrote the
-code. This is especially important for large or high-risk changes. It is useful
-to add a test plan to the pull request description if testing the changes is
-not straightforward.
+### Broadwell-ep Xeon
 
-Translations
-------------
+Impl         | avg        | speed%
+------------ | ---------- | --------
+basic |0.00599851   | 100
+sse4  |0.00396052   | 151
+avx   |0.00397483   | 151
+rorx  |0.00334802   | 179
+rorx_x8ms | 0.00328667  | 183
 
-Changes to translations as well as new translations can be submitted to
-[Bitcoin Core's Transifex page](https://www.transifex.com/projects/p/bitcoin/).
+references
+-----------
 
-Translations are periodically pulled from Transifex and merged into the git repository. See the
-[translation process](doc/translation_process.md) for details on how this works.
-
-**Important**: We do not accept translation changes as GitHub pull requests because the next
-pull from Transifex would automatically overwrite them again.
-
-Translators should also subscribe to the [mailing list](https://groups.google.com/forum/#!forum/bitcoin-translators).
+1. <a id="ref1"/> Fast SHA-256 Implementations on Intel® Architecture Processors [paper](https://www-ssl.intel.com/content/www/us/en/intelligent-systems/intel-technology/sha-256-implementations-paper.html) and
+  [implementation](http://downloadmirror.intel.com/22357/eng/sha256_code_release_v2.zip).
+2. <a id="ref2"/> [Intel SHA extensions](https://software.intel.com/en-us/articles/intel-sha-extensions): New Instructions Supporting the Secure Hash Algorithm on Intel® Architecture Processors.
