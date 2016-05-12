@@ -4,6 +4,11 @@ Laanwj's Bitcoin Core repository
 In progress
 -------------
 
+### Hashing performance
+
+- [2016_05_sha256_accel](https://github.com/laanwj/bitcoin/tree/2016_05_sha256_accel)
+  experiment with optimized SHA256 variants. 
+
 ### Database experiments
 
 - [2016_04_mdb](https://github.com/laanwj/bitcoin/tree/2016_04_mdb)
