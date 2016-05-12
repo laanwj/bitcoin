@@ -1,82 +1,47 @@
-Bitcoin Core integration/staging tree
+SHA256 performance experiment
 =====================================
 
-[![Build Status](https://travis-ci.org/bitcoin/bitcoin.svg?branch=master)](https://travis-ci.org/bitcoin/bitcoin)
+what is this
+-------------
 
-https://bitcoincore.org
+Profiling has shown that a non-trivial amount of time in bitcoind is spent in computing SHA256 hashes,
+especially `sha256::Transform`. Speeding up this function should result in an overall performance gain.
 
-What is Bitcoin?
-----------------
+Intel has [published][intel] optimized assembler variants of SHA256 for various of their extension
+instruction sets, namely SSE4, AVR, and RORX.
+Even more recent Intel CPUs have [SHA extensions][sha]. 
 
-Bitcoin is an experimental new digital currency that enables instant payments to
-anyone, anywhere in the world. Bitcoin uses peer-to-peer technology to operate
-with no central authority: managing transactions and issuing money are carried
-out collectively by the network. Bitcoin Core is the name of open source
-software which enables the use of this currency.
+In this experiment this assembly code was integrated into the Bitcoin Core
+source tree to measure performance.
 
-For more information, as well as an immediately useable, binary version of
-the Bitcoin Core software, see https://bitcoin.org/en/download, or read the
-[original whitepaper](https://bitcoincore.org/bitcoin.pdf).
+usage
+------
 
-License
--------
+    apt-get install yasm
+    ./configure CPPFLAGS="-DBENCH_RORX" # leave out the CPPFLAGS to skip RORX benchmark
+    make -j10 src/bench/bench_bitcoin
+    src/bench/bench_bitcoin
 
-Bitcoin Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
-information or see https://opensource.org/licenses/MIT.
+results
+---------
 
-Development Process
--------------------
+### AMD FX-8370 Eight-Core Processor
 
-The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoin/bitcoin/tags) are created
-regularly to indicate new official, stable release versions of Bitcoin Core.
+Impl         | min      | max      | avg
+------------ | -------- | -------- | ----------
+SHA256_avx   |0.00635675|0.00653851|0.00637428
+SHA256_basic |0.00444281|0.00449353|0.0044496
+SHA256_sse4  |0.0038569 |0.00395656|0.00388814
 
-The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+On this CPU, it turns out that the AVX variant is slowest, even slower than the C implementation.
+The SSE4 variant is about 13% faster on average.
+RORX instructions are not supported.
 
-The developer [mailing list](https://lists.linuxfoundation.org/mailman/listinfo/bitcoin-dev)
-should be used to discuss complicated or controversial changes before working
-on a patch set.
+It will be interesting to see how this performs on Intel chips.
 
-Developer IRC can be found on Freenode at #bitcoin-core-dev.
+references
+-----------
 
-Testing
--------
-
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test on short notice. Please be patient and help out by testing
-other people's pull requests, and remember this is a security-critical project where any mistake might cost people
-lots of money.
-
-### Automated Testing
-
-Developers are strongly encouraged to write [unit tests](/doc/unit-tests.md) for new code, and to
-submit new unit tests for old code. Unit tests can be compiled and run
-(assuming they weren't disabled in configure) with: `make check`
-
-There are also [regression and integration tests](/qa) of the RPC interface, written
-in Python, that are run automatically on the build server.
-These tests can be run (if the [test dependencies](/qa) are installed) with: `qa/pull-tester/rpc-tests.py`
-
-The Travis CI system makes sure that every pull request is built for Windows
-and Linux, OS X, and that unit and sanity tests are automatically run.
-
-### Manual Quality Assurance (QA) Testing
-
-Changes should be tested by somebody other than the developer who wrote the
-code. This is especially important for large or high-risk changes. It is useful
-to add a test plan to the pull request description if testing the changes is
-not straightforward.
-
-Translations
-------------
-
-Changes to translations as well as new translations can be submitted to
-[Bitcoin Core's Transifex page](https://www.transifex.com/projects/p/bitcoin/).
-
-Translations are periodically pulled from Transifex and merged into the git repository. See the
-[translation process](doc/translation_process.md) for details on how this works.
-
-**Important**: We do not accept translation changes as GitHub pull requests because the next
-pull from Transifex would automatically overwrite them again.
-
-Translators should also subscribe to the [mailing list](https://groups.google.com/forum/#!forum/bitcoin-translators).
+- [intel]: Fast SHA-256 Implementations on Intel® Architecture Processors [paper](https://www-ssl.intel.com/content/www/us/en/intelligent-systems/intel-technology/sha-256-implementations-paper.html) and
+  [implementation](http://downloadmirror.intel.com/22357/eng/sha256_code_release_v2.zip).
+- [intelsha]: [Intel SHA extensions](https://software.intel.com/en-us/articles/intel-sha-extensions).
