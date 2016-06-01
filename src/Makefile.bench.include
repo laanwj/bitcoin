@@ -8,9 +8,11 @@ BENCH_BINARY = bench/bench_bitcoin$(EXEEXT)
 
 
 bench_bench_bitcoin_SOURCES = \
+  bench/data/block413567.hex.h \
   bench/bench_bitcoin.cpp \
   bench/bench.cpp \
   bench/bench.h \
+  bench/checkblock.cpp \
   bench/Examples.cpp \
   bench/rollingbloom.cpp \
   bench/crypto_hash.cpp \
