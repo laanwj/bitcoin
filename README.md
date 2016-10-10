@@ -54,17 +54,17 @@ This is still very unstable.
 See [PR #7759](https://github.com/bitcoin/bitcoin/pull/7759) or the branch
 [2016_03_utxo_streaming](https://github.com/laanwj/bitcoin/tree/2016_03_utxo_streaming).
 
+### Testing/fuzzing/verification 
+
+- [Univalue fuzzing branch](https://github.com/laanwj/univalue/tree/2015_11_unifuzz),
+and [instructions](https://gist.github.com/laanwj/68551528b7ae641ccaeb519566ca67c7) for building
+univalue with afl-fuzz.
+
+
 Ready for review
 --------------------
 
-- [2016_04_i18n_unicode_rpc](https://github.com/laanwj/bitcoin/tree/2016_04_i18n_unicode_rpc)
-  add full UTF-8 support to RPC (and the underlying JSON implementation). See also
-  [PR #7892](https://github.com/bitcoin/bitcoin/pull/7892) and upstream
-  [PR #22](https://github.com/jgarzik/univalue/pull/22).
-
-  - See also: [Univalue fuzzing branch](https://github.com/laanwj/univalue/tree/2015_11_unifuzz),
-    and [instructions](https://gist.github.com/laanwj/68551528b7ae641ccaeb519566ca67c7) for building
-    univalue with afl-fuzz.
+N/A
 
 Documents and notes
 --------------------
@@ -85,4 +85,6 @@ Scripts
 - [bitcoin-submittx](https://github.com/laanwj/bitcoin-submittx):
   stand-alone Bitcoin transaction submission tool (in Python).
 - [JSON-RPC batching example](https://gist.github.com/laanwj/f2e0238bd151d5365c07bdd03467588b).
+- [External repository for Bitcoin Core related maintenance tools](https://github.com/laanwj/bitcoin-maintainer-tools)
+  - Has a script for per-function binary comparison between built git tags
 
