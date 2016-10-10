@@ -4,6 +4,11 @@ Laanwj's Bitcoin Core repository
 In progress
 -------------
 
+[Main list](https://github.com/bitcoin/bitcoin/pulls/laanwj).
+
+Below are experiments which are either too risky to include in Bitcoin Core,
+are personal experiments, or are too half-baked at the moment to consider merging.
+
 ### Hashing performance
 
 - [2016_05_sha256_accel](https://github.com/laanwj/bitcoin/tree/2016_05_sha256_accel)
@@ -54,7 +59,7 @@ This is still very unstable.
 See [PR #7759](https://github.com/bitcoin/bitcoin/pull/7759) or the branch
 [2016_03_utxo_streaming](https://github.com/laanwj/bitcoin/tree/2016_03_utxo_streaming).
 
-### Testing/fuzzing/verification 
+### Testing/fuzzing/verification
 
 - [Univalue fuzzing branch](https://github.com/laanwj/univalue/tree/2015_11_unifuzz),
 and [instructions](https://gist.github.com/laanwj/68551528b7ae641ccaeb519566ca67c7) for building
