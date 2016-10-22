@@ -9,7 +9,6 @@
 
 #include "chainparams.h"
 #include "clientversion.h"
-#include "compat.h"
 #include "rpc/server.h"
 #include "init.h"
 #include "noui.h"
@@ -128,21 +127,29 @@ bool AppInit(int argc, char* argv[])
             fprintf(stderr, "Error: There is no RPC client functionality in bitcoind anymore. Use the bitcoin-cli utility instead.\n");
             exit(1);
         }
+#ifndef WIN32
         if (GetBoolArg("-daemon", false))
         {
-#if HAVE_DECL_DAEMON
             fprintf(stdout, "Bitcoin server starting\n");
 
             // Daemonize
-            if (daemon(1, 0)) { // don't chdir (1), do close FDs (0)
-                fprintf(stderr, "Error: daemon() failed: %s\n", strerror(errno));
+            pid_t pid = fork();
+            if (pid < 0)
+            {
+                fprintf(stderr, "Error: fork() returned %d errno %d\n", pid, errno);
                 return false;
             }
-#else
-            fprintf(stderr, "Error: -daemon is not supported on this operating system\n");
-            return false;
-#endif // HAVE_DECL_DAEMON
+            if (pid > 0) // Parent process, pid is child process id
+            {
+                return true;
+            }
+            // Child process falls through to rest of initialization
+
+            pid_t sid = setsid();
+            if (sid < 0)
+                fprintf(stderr, "Error: setsid() returned %d errno %d\n", sid, errno);
         }
+#endif
         SoftSetBoolArg("-server", true);
 
         // Set this early so that parameter interactions go to console
