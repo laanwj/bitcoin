@@ -8,7 +8,9 @@
 #include "main.h"
 #include "consensus/validation.h"
 
-#include "bench/data/block413567.hex.h"
+namespace block_bench {
+#include "bench/data/block413567.raw.h"
+}
 
 // These are the two major time-sinks which happen after we have fully received
 // a block off the wire, but before we can relay the block on to peers using
