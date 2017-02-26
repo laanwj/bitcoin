@@ -29,8 +29,10 @@ void
 benchmark::BenchRunner::RunAll(double elapsedTimeForOne)
 {
     perf_init();
+#ifndef CLOUDABI
     std::cout << "#Benchmark" << "," << "count" << "," << "min" << "," << "max" << "," << "average" << ","
               << "min_cycles" << "," << "max_cycles" << "," << "average_cycles" << "\n";
+#endif
 
     for (const auto &p: benchmarks()) {
         State state(p.first, elapsedTimeForOne);
@@ -97,8 +99,10 @@ bool benchmark::State::KeepRunning()
     // Output results
     double average = (now-beginTime)/count;
     int64_t averageCycles = (nowCycles-beginCycles)/count;
+#ifndef CLOUDABI
     std::cout << std::fixed << std::setprecision(15) << name << "," << count << "," << minTime << "," << maxTime << "," << average << ","
               << minCycles << "," << maxCycles << "," << averageCycles << "\n";
+#endif
 
     return false;
 }

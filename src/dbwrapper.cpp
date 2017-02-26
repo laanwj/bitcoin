@@ -11,7 +11,7 @@
 #include <leveldb/cache.h>
 #include <leveldb/env.h>
 #include <leveldb/filter_policy.h>
-#include <memenv.h>
+#include <memenv/memenv.h>
 #include <stdint.h>
 
 static leveldb::Options GetOptions(size_t nCacheSize)
@@ -32,16 +32,15 @@ static leveldb::Options GetOptions(size_t nCacheSize)
 
 CDBWrapper::CDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe, bool obfuscate)
 {
-    penv = NULL;
     readoptions.verify_checksums = true;
     iteroptions.verify_checksums = true;
     iteroptions.fill_cache = false;
     syncoptions.sync = true;
     options = GetOptions(nCacheSize);
     options.create_if_missing = true;
+    penv = leveldb::Env::DefaultWithDirectory(path.fd());
     if (fMemory) {
-        penv = leveldb::NewMemEnv(leveldb::Env::Default());
-        options.env = penv;
+        penv = leveldb::NewMemEnv(penv);
     } else {
         if (fWipe) {
             LogPrintf("Wiping LevelDB in %s\n", path.string());
@@ -51,6 +50,7 @@ CDBWrapper::CDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory, bo
         TryCreateDirectory(path);
         LogPrintf("Opening LevelDB in %s\n", path.string());
     }
+    options.env = penv;
     leveldb::Status status = leveldb::DB::Open(options, path.string(), &pdb);
     dbwrapper_private::HandleError(status);
     LogPrintf("Opened LevelDB successfully\n");

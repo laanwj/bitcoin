@@ -228,16 +228,22 @@ void *PosixLockedPageAllocator::AllocateLocked(size_t len, bool *lockingSuccess)
     void *addr;
     len = align_up(len, page_size);
     addr = mmap(nullptr, len, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+#ifndef CLOUDABI
     if (addr) {
         *lockingSuccess = mlock(addr, len) == 0;
     }
+#else /* Need to find another way to get locked memory to the process */
+    *lockingSuccess = false;
+#endif
     return addr;
 }
 void PosixLockedPageAllocator::FreeLocked(void* addr, size_t len)
 {
     len = align_up(len, page_size);
     memory_cleanse(addr, len);
+#ifndef CLOUDABI
     munlock(addr, len);
+#endif
     munmap(addr, len);
 }
 size_t PosixLockedPageAllocator::GetLimit()

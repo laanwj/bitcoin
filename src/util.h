@@ -100,9 +100,17 @@ bool RenameOver(fs::path src, fs::path dest);
 bool TryCreateDirectory(const fs::path& p);
 fs::path GetDefaultDataDir();
 const fs::path &GetDataDir(bool fNetSpecific = true);
+
+#ifdef CLOUDABI
+/** Set fd under to which the data directory is relative */
+void SetDataDirFD(int fd);
+/** Set console fd */
+void SetConsoleFD(int fd);
+#endif
+
 void ClearDatadirCache();
 fs::path GetConfigFile(const std::string& confPath);
-#ifndef WIN32
+#if !defined(WIN32) and !defined(CLOUDABI)
 fs::path GetPidFile();
 void CreatePidFile(const fs::path &path, pid_t pid);
 #endif
@@ -166,6 +174,15 @@ bool GetBoolArg(const std::string& strArg, bool fDefault);
  * @return true if argument gets set, false if it already had a value
  */
 bool SoftSetArg(const std::string& strArg, const std::string& strValue);
+
+/**
+ * Set a multi-argument if it doesn't already have a value
+ *
+ * @param strArg Argument to set (e.g. "-foo")
+ * @param strValues Values (e.g. {"1","2"})
+ * @return true if argument gets set, false if it already had a value
+ */
+bool SoftSetMultiArg(const std::string& strArg, const std::vector<std::string>& values);
 
 /**
  * Set a boolean argument if it doesn't already have a value

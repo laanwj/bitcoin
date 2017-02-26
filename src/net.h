@@ -151,7 +151,11 @@ public:
     bool Start(CScheduler& scheduler, std::string& strNodeError, Options options);
     void Stop();
     void Interrupt();
+#ifndef CLOUDABI
     bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
+#endif
+    /** Listen directly on a socket, provided as file descriptor */
+    bool BindListenFD(SOCKET hListenSocket, std::string& strError, bool fWhitelisted = false);
     bool GetNetworkActive() const { return fNetworkActive; };
     void SetNetworkActive(bool active);
     bool OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false, bool fFeeler = false, bool fAddnode = false);

@@ -57,7 +57,9 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
+#ifndef CLOUDABI
 #include <boost/interprocess/sync/file_lock.hpp>
+#endif
 #include <boost/thread.hpp>
 #include <openssl/crypto.h>
 
@@ -247,7 +249,7 @@ void Shutdown()
     }
 #endif
 
-#ifndef WIN32
+#if !defined(WIN32) and !defined(CLOUDABI)
     try {
         fs::remove(GetPidFile());
     } catch (const fs::filesystem_error& e) {
@@ -277,6 +279,7 @@ void HandleSIGHUP(int)
     fReopenDebugLog = true;
 }
 
+#ifndef CLOUDABI
 bool static Bind(CConnman& connman, const CService &addr, unsigned int flags) {
     if (!(flags & BF_EXPLICIT) && IsLimited(addr))
         return false;
@@ -288,6 +291,8 @@ bool static Bind(CConnman& connman, const CService &addr, unsigned int flags) {
     }
     return true;
 }
+#endif
+
 void OnRPCStarted()
 {
     uiInterface.NotifyBlockTip.connect(&RPCNotifyBlockChange);
@@ -577,6 +582,7 @@ void CleanupBlockRevFiles()
     // ordered map keyed by block file index.
     LogPrintf("Removing unusable blk?????.dat and rev?????.dat files for -reindex with -prune\n");
     fs::path blocksdir = GetDataDir() / "blocks";
+#ifndef CLOUDABI
     for (fs::directory_iterator it(blocksdir); it != fs::directory_iterator(); it++) {
         if (is_regular_file(*it) &&
             it->path().filename().string().length() == 12 &&
@@ -588,6 +594,7 @@ void CleanupBlockRevFiles()
                 remove(it->path());
         }
     }
+#endif
 
     // Remove all block files that aren't part of a contiguous set starting at
     // zero by walking the ordered map (keys are block file indices) by
@@ -845,7 +852,7 @@ bool AppInitBasicSetup()
     if (!SetupNetworking())
         return InitError("Initializing networking failed");
 
-#ifndef WIN32
+#if !defined(WIN32) and !defined(CLOUDABI)
     if (!GetBoolArg("-sysperms", false)) {
         umask(077);
     }
@@ -1112,6 +1119,7 @@ bool AppInitParameterInteraction()
 
 static bool LockDataDirectory(bool probeOnly)
 {
+#ifndef CLOUDABI
     std::string strDataDir = GetDataDir().string();
 
     // Make sure only a single Bitcoin process is using the data directory.
@@ -1130,6 +1138,7 @@ static bool LockDataDirectory(bool probeOnly)
     } catch(const boost::interprocess::interprocess_exception& e) {
         return InitError(strprintf(_("Cannot obtain a lock on data directory %s. %s is probably already running.") + " %s.", strDataDir, _(PACKAGE_NAME), e.what()));
     }
+#endif
     return true;
 }
 
@@ -1161,7 +1170,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
         return false;
     }
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(CLOUDABI)
     CreatePidFile(GetPidFile(), getpid());
 #endif
     if (GetBoolArg("-shrinkdebugfile", !fDebug)) {
@@ -1318,6 +1327,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     if (fListen) {
         bool fBound = false;
+#ifndef CLOUDABI
         if (mapMultiArgs.count("-bind")) {
             BOOST_FOREACH(const std::string& strBind, mapMultiArgs.at("-bind")) {
                 CService addrBind;
@@ -1342,6 +1352,19 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
             fBound |= Bind(connman, CService(in6addr_any, GetListenPort()), BF_NONE);
             fBound |= Bind(connman, CService(inaddr_any, GetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
         }
+#else
+        if (IsArgSet("-p2pfd")) {
+            std::string strError;
+            int fd = GetArg("-p2pfd", -1);
+            // TODO: whitebind
+            if (!connman.BindListenFD(fd, strError, false)) {
+                return InitError(strError);
+            }
+            fBound = true;
+        } else {
+            LogPrintf("Warning: No RPC fd provided\n");
+        }
+#endif
         if (!fBound)
             return InitError(_("Failed to listen on any port. Use -listen=0 if you want this."));
     }

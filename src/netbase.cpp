@@ -89,6 +89,7 @@ bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsign
         }
     }
 
+#ifndef CLOUDABI
     struct addrinfo aiHint;
     memset(&aiHint, 0, sizeof(struct addrinfo));
 
@@ -125,7 +126,17 @@ bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsign
     }
 
     freeaddrinfo(aiRes);
+#else /* no name lookup, attempt parsing IP4/6 with inet_pton */
+    struct in_addr ipv4_addr;
+    if (inet_pton(AF_INET, pszName, &ipv4_addr) > 0) {
+        vIP.push_back(CNetAddr(ipv4_addr));
+    }
 
+    struct in6_addr ipv6_addr;
+    if (inet_pton(AF_INET6, pszName, &ipv6_addr) > 0) {
+        vIP.push_back(CNetAddr(ipv6_addr));
+    }
+#endif
     return (vIP.size() > 0);
 }
 
@@ -415,6 +426,7 @@ static bool Socks5(const std::string& strDest, int port, const ProxyCredentials 
 
 bool static ConnectSocketDirectly(const CService &addrConnect, SOCKET& hSocketRet, int nTimeout)
 {
+#ifndef CLOUDABI
     hSocketRet = INVALID_SOCKET;
 
     struct sockaddr_storage sockaddr;
@@ -500,6 +512,9 @@ bool static ConnectSocketDirectly(const CService &addrConnect, SOCKET& hSocketRe
 
     hSocketRet = hSocket;
     return true;
+#else
+    return false;
+#endif
 }
 
 bool SetProxy(enum Network net, const proxyType &addrProxy) {

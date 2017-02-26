@@ -32,16 +32,22 @@
 #include <windows.h>
 #include <ws2tcpip.h>
 #else
+#ifndef CLOUDABI
 #include <sys/fcntl.h>
+#endif
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#ifndef CLOUDABI
 #include <netinet/tcp.h>
+#endif
 #include <arpa/inet.h>
+#ifndef CLOUDABI
 #include <ifaddrs.h>
+#endif
 #include <limits.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -83,5 +89,10 @@ bool static inline IsSelectableSocket(SOCKET s) {
     return (s < FD_SETSIZE);
 #endif
 }
+
+#ifdef CLOUDABI
+/* Define some constants that are not available on cloudabi */
+#define INADDR_NONE ((unsigned long int) 0xffffffff)
+#endif
 
 #endif // BITCOIN_COMPAT_H

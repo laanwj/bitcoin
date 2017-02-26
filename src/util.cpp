@@ -115,6 +115,13 @@ bool fLogIPs = DEFAULT_LOGIPS;
 std::atomic<bool> fReopenDebugLog(false);
 CTranslationInterface translationInterface;
 
+int dataDirFD = -1;
+#ifndef CLOUDABI
+FILE *consout = stdout;
+#else
+FILE *consout;
+#endif
+
 /** Init OpenSSL library multithreading support */
 static CCriticalSection** ppmutexOpenSSL;
 void locking_callback(int mode, int i, const char* file, int line) NO_THREAD_SAFETY_ANALYSIS
@@ -297,8 +304,11 @@ int LogPrintStr(const std::string &str)
     if (fPrintToConsole)
     {
         // print to console
-        ret = fwrite(strTimestamped.data(), 1, strTimestamped.size(), stdout);
-        fflush(stdout);
+        if (consout)
+        {
+            ret = fwrite(strTimestamped.data(), 1, strTimestamped.size(), consout);
+            fflush(consout);
+        }
     }
     else if (fPrintToDebugLog)
     {
@@ -428,6 +438,16 @@ bool SoftSetBoolArg(const std::string& strArg, bool fValue)
         return SoftSetArg(strArg, std::string("0"));
 }
 
+bool SoftSetMultiArg(const std::string& strArg, const std::vector<std::string>& values)
+{
+    LOCK(cs_args);
+    if (_mapMultiArgs.count(strArg))
+        return false;
+    _mapMultiArgs[strArg] = values;
+    return true;
+}
+
+
 void ForceSetArg(const std::string& strArg, const std::string& strValue)
 {
     LOCK(cs_args);
@@ -483,6 +503,8 @@ fs::path GetDefaultDataDir()
 #ifdef WIN32
     // Windows
     return GetSpecialFolderPath(CSIDL_APPDATA) / "Bitcoin";
+#elif defined(CLOUDABI)
+    return fs::path(dataDirFD, ".");
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -517,7 +539,11 @@ const fs::path &GetDataDir(bool fNetSpecific)
         return path;
 
     if (IsArgSet("-datadir")) {
+#ifndef CLOUDABI
         path = fs::system_complete(GetArg("-datadir", ""));
+#else
+        path = fs::path(dataDirFD, GetArg("-datadir", ""));
+#endif
         if (!fs::is_directory(path)) {
             path = "";
             return path;
@@ -531,6 +557,21 @@ const fs::path &GetDataDir(bool fNetSpecific)
     fs::create_directories(path);
 
     return path;
+}
+
+int GetDataDirFD()
+{
+    return dataDirFD;
+}
+
+void SetDataDirFD(int fd)
+{
+    dataDirFD = fd;
+}
+
+void SetConsoleFD(int fd)
+{
+    consout = fdopen(fd, "w");
 }
 
 void ClearDatadirCache()
@@ -552,6 +593,7 @@ fs::path GetConfigFile(const std::string& confPath)
 
 void ReadConfigFile(const std::string& confPath)
 {
+#ifndef CLOUDABI
     fs::ifstream streamConfig(GetConfigFile(confPath));
     if (!streamConfig.good())
         return; // No bitcoin.conf file is OK
@@ -574,9 +616,10 @@ void ReadConfigFile(const std::string& confPath)
     }
     // If datadir is changed in .conf file:
     ClearDatadirCache();
+#endif
 }
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(CLOUDABI)
 fs::path GetPidFile()
 {
     fs::path pathPidFile(GetArg("-pid", BITCOIN_PID_FILENAME));
@@ -600,6 +643,13 @@ bool RenameOver(fs::path src, fs::path dest)
 #ifdef WIN32
     return MoveFileExA(src.string().c_str(), dest.string().c_str(),
                        MOVEFILE_REPLACE_EXISTING) != 0;
+#elif defined(CLOUDABI)
+    try {
+        fs::rename(src, dest);
+        return true;
+    } catch (const fs::filesystem_error &) {
+        return false;
+    }
 #else
     int rc = std::rename(src.string().c_str(), dest.string().c_str());
     return (rc == 0);
@@ -657,6 +707,8 @@ bool TruncateFile(FILE *file, unsigned int length) {
 int RaiseFileDescriptorLimit(int nMinFD) {
 #if defined(WIN32)
     return 2048;
+#elif defined(CLOUDABI)
+    return 2048; /* ??? */
 #else
     struct rlimit limitFD;
     if (getrlimit(RLIMIT_NOFILE, &limitFD) != -1) {
@@ -764,9 +816,11 @@ fs::path GetSpecialFolderPath(int nFolder, bool fCreate)
 
 void runCommand(const std::string& strCommand)
 {
+#ifndef CLOUDABI
     int nErr = ::system(strCommand.c_str());
     if (nErr)
         LogPrintf("runCommand error: system(%s) returned %d\n", strCommand, nErr);
+#endif
 }
 
 void RenameThread(const char* name)
@@ -787,6 +841,7 @@ void RenameThread(const char* name)
 
 void SetupEnvironment()
 {
+#ifndef CLOUDABI
     // On most POSIX systems (e.g. Linux, but not BSD) the environment's locale
     // may be invalid, in which case the "C" locale is used as fallback.
 #if !defined(WIN32) && !defined(MAC_OSX) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
@@ -802,6 +857,7 @@ void SetupEnvironment()
     // fs::path, which is then used to explicitly imbue the path.
     std::locale loc = fs::path::imbue(std::locale::classic());
     fs::path::imbue(loc);
+#endif
 }
 
 bool SetupNetworking()

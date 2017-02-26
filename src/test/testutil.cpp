@@ -11,5 +11,9 @@
 #include "fs.h"
 
 fs::path GetTempPath() {
+#ifdef CLOUDABI
+    return fs::path(".");
+#else
     return fs::temp_directory_path();
+#endif
 }

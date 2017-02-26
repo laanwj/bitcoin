@@ -24,7 +24,7 @@ public:
     */
     bool SendMessage(const char *command, const void* data, size_t size);
 
-    bool Initialize(void *pcontext);
+    bool Initialize(void *pcontext, int fd);
     void Shutdown();
 };
 

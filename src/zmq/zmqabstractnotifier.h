@@ -29,7 +29,7 @@ public:
     std::string GetAddress() const { return address; }
     void SetAddress(const std::string &a) { address = a; }
 
-    virtual bool Initialize(void *pcontext) = 0;
+    virtual bool Initialize(void *pcontext, int fd) = 0;
     virtual void Shutdown() = 0;
 
     virtual bool NotifyBlock(const CBlockIndex *pindex);

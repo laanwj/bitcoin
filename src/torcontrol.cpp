@@ -215,13 +215,16 @@ bool TorControlConnection::Connect(const std::string &target, const ConnectionCB
     bufferevent_enable(b_conn, EV_READ|EV_WRITE);
     this->connected = _connected;
     this->disconnected = _disconnected;
-
+#ifndef CLOUDABI
     // Finally, connect to target
     if (bufferevent_socket_connect(b_conn, (struct sockaddr*)&connect_to_addr, connect_to_addrlen) < 0) {
         LogPrintf("tor: Error connecting to address %s\n", target);
         return false;
     }
     return true;
+#else
+    return false;
+#endif
 }
 
 bool TorControlConnection::Disconnect()

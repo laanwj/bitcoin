@@ -960,6 +960,7 @@ std::string format(const char* fmt, const Args&... args)
     return oss.str();
 }
 
+#ifndef CLOUDABI
 /// Format list of arguments to std::cout, according to the given format string
 template<typename... Args>
 void printf(const char* fmt, const Args&... args)
@@ -973,6 +974,7 @@ void printfln(const char* fmt, const Args&... args)
     format(std::cout, fmt, args...);
     std::cout << '\n';
 }
+#endif
 
 #else // C++98 version
 

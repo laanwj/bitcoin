@@ -24,6 +24,11 @@
 #include <boost/thread.hpp>
 
 #include <stdio.h>
+#ifdef CLOUDABI
+#include <boost/algorithm/string/join.hpp>
+#include <program.h>
+#include <argdata.hpp>
+#endif
 
 /* Introduction text for doxygen: */
 
@@ -61,18 +66,12 @@ void WaitForShutdown(boost::thread_group* threadGroup)
 //
 // Start
 //
-bool AppInit(int argc, char* argv[])
+bool AppInit()
 {
     boost::thread_group threadGroup;
     CScheduler scheduler;
 
     bool fRet = false;
-
-    //
-    // Parameters
-    //
-    // If Qt is used, parameters/bitcoin.conf are parsed in qt/bitcoin.cpp's main()
-    ParseParameters(argc, argv);
 
     // Process help and version before taking care about datadir
     if (IsArgSet("-?") || IsArgSet("-h") ||  IsArgSet("-help") || IsArgSet("-version"))
@@ -91,7 +90,9 @@ bool AppInit(int argc, char* argv[])
             strUsage += "\n" + HelpMessage(HMM_BITCOIND);
         }
 
+#ifndef CLOUDABI
         fprintf(stdout, "%s", strUsage.c_str());
+#endif
         return true;
     }
 
@@ -117,17 +118,6 @@ bool AppInit(int argc, char* argv[])
             return false;
         }
 
-        // Command-line RPC
-        bool fCommandLine = false;
-        for (int i = 1; i < argc; i++)
-            if (!IsSwitchChar(argv[i][0]) && !boost::algorithm::istarts_with(argv[i], "bitcoin:"))
-                fCommandLine = true;
-
-        if (fCommandLine)
-        {
-            fprintf(stderr, "Error: There is no RPC client functionality in bitcoind anymore. Use the bitcoin-cli utility instead.\n");
-            exit(EXIT_FAILURE);
-        }
         // -server defaults to true for bitcoind but not for the GUI so do this here
         SoftSetBoolArg("-server", true);
         // Set this early so that parameter interactions go to console
@@ -186,6 +176,7 @@ bool AppInit(int argc, char* argv[])
     return fRet;
 }
 
+#ifndef CLOUDABI
 int main(int argc, char* argv[])
 {
     SetupEnvironment();
@@ -193,5 +184,102 @@ int main(int argc, char* argv[])
     // Connect bitcoind signal handlers
     noui_connect();
 
-    return (AppInit(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE);
+    ParseParameters(argc, argv);
+
+    return (AppInit() ? EXIT_SUCCESS : EXIT_FAILURE);
 }
+#else
+void program_main(const argdata_t *ad) {
+    mstd::optional<int> console_fd;
+    mstd::optional<int> datadir_fd;
+    mstd::optional<int> rpc_fd;
+    mstd::optional<int> p2p_fd;
+    mstd::optional<int> zmq_fd;
+    argdata_t::map args;
+    for (auto &i: ad->as_map()) {
+        auto key = i.first->as_str();
+        if (key == "console") {
+            console_fd = i.second->get_fd();
+        } else if(key == "datadir") {
+            datadir_fd = i.second->get_fd();
+        } else if(key == "args") {
+            args = i.second->as_map();
+        } else if(key == "rpc") {
+            rpc_fd = i.second->get_fd();
+        } else if(key == "p2p") {
+            p2p_fd = i.second->get_fd();
+        } else if(key == "zmq") {
+            zmq_fd = i.second->get_fd();
+        }
+    }
+    // Console fd is optional
+    if (console_fd) {
+        SetConsoleFD(console_fd.value());
+    }
+    // Datadir fd is mandatory
+    if (datadir_fd) {
+        SetDataDirFD(datadir_fd.value());
+    } else {
+        LogPrintf("Need to specify data directory\n");
+        std::exit(1);
+    }
+    // Log test message
+    fPrintToConsole = true;
+    LogPrintf("Welcome to cloudabi\n");
+
+    SetupEnvironment();
+    noui_connect();
+
+    // Process arguments
+    LogPrintf("Processing arguments\n");
+    for (const auto &entry: args) {
+        std::string key = "-" + std::string(entry.first->as_str());
+	mstd::optional<argdata_t::seq> seqval = entry.second->get_seq();
+        if (seqval) {
+            std::vector<std::string> values;
+            for (const auto &x: seqval.value()) {
+                values.push_back(std::string(x->as_str()));
+            }
+            LogPrintf("multiarg %s: %s\n", key, boost::algorithm::join(values, ", "));
+            SoftSetMultiArg(key, values);
+        } else { /* Convert any sensible kind of argument to string */
+            mstd::optional<mstd::string_view> strval = entry.second->get_str();
+            mstd::optional<bool> boolval = entry.second->get_bool();
+            mstd::optional<double> doubleval = entry.second->get_float();
+            mstd::optional<int64_t> intval = entry.second->get_int<int64_t>();
+            std::string value;
+            if (strval) {
+                value = strval.value();
+            } else if (boolval) {
+                value = boolval.value() ? "1" : "0";
+            } else if(doubleval) {
+                value = strprintf("%f", doubleval.value());
+            } else if(intval) {
+                value = strprintf("%d", intval.value());
+            }
+            LogPrintf("arg %s: %s\n", key, value);
+            SoftSetArg(key, value);
+        }
+    }
+    // Pass RPC and P2P fd as arguments
+    // TODO: should be able to accept mulitple of these to bind to multiple addresses,
+    // as well as associated bind/whitelist flags.
+    // TODO: this is a hack, these arguments should be passed in a configuration
+    // structure instead of magically enter the program through a global
+    // namespace.
+    if (rpc_fd) {
+        ForceSetArg("-rpcfd", itostr(rpc_fd.value()));
+        LogPrintf("rpcfd: %i\n", rpc_fd.value());
+    }
+    if (p2p_fd) {
+        ForceSetArg("-p2pfd", itostr(p2p_fd.value()));
+        LogPrintf("p2pfd: %i\n", p2p_fd.value());
+    }
+    if (zmq_fd) {
+        ForceSetArg("-zmqfd", itostr(zmq_fd.value()));
+        LogPrintf("zmqfd: %i\n", zmq_fd.value());
+    }
+
+    std::exit(AppInit() ? EXIT_SUCCESS : EXIT_FAILURE);
+}
+#endif

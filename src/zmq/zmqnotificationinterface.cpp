@@ -34,6 +34,7 @@ CZMQNotificationInterface* CZMQNotificationInterface::Create()
     CZMQNotificationInterface* notificationInterface = NULL;
     std::map<std::string, CZMQNotifierFactory> factories;
     std::list<CZMQAbstractNotifier*> notifiers;
+    int fd = GetArg("-zmqfd", -1);
 
     factories["pubhashblock"] = CZMQAbstractNotifier::Create<CZMQPublishHashBlockNotifier>;
     factories["pubhashtx"] = CZMQAbstractNotifier::Create<CZMQPublishHashTransactionNotifier>;
@@ -59,7 +60,7 @@ CZMQNotificationInterface* CZMQNotificationInterface::Create()
         notificationInterface = new CZMQNotificationInterface();
         notificationInterface->notifiers = notifiers;
 
-        if (!notificationInterface->Initialize())
+        if (!notificationInterface->Initialize(fd))
         {
             delete notificationInterface;
             notificationInterface = NULL;
@@ -70,7 +71,7 @@ CZMQNotificationInterface* CZMQNotificationInterface::Create()
 }
 
 // Called at startup to conditionally set up ZMQ socket(s)
-bool CZMQNotificationInterface::Initialize()
+bool CZMQNotificationInterface::Initialize(int fd)
 {
     LogPrint("zmq", "zmq: Initialize notification interface\n");
     assert(!pcontext);
@@ -87,7 +88,7 @@ bool CZMQNotificationInterface::Initialize()
     for (; i!=notifiers.end(); ++i)
     {
         CZMQAbstractNotifier *notifier = *i;
-        if (notifier->Initialize(pcontext))
+        if (notifier->Initialize(pcontext, fd))
         {
             LogPrint("zmq", "  Notifier %s ready (address = %s)\n", notifier->GetType(), notifier->GetAddress());
         }

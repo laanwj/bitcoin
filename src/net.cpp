@@ -1066,7 +1066,7 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
         CloseSocket(hSocket);
         return;
     }
-
+#ifdef TCP_NODELAY
     // According to the internet TCP_NODELAY is not carried into accepted sockets
     // on all platforms.  Set it again here just to be sure.
     int set = 1;
@@ -1074,6 +1074,7 @@ void CConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     setsockopt(hSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&set, sizeof(int));
 #else
     setsockopt(hSocket, IPPROTO_TCP, TCP_NODELAY, (void*)&set, sizeof(int));
+#endif
 #endif
 
     if (IsBanned(addr) && !whitelisted)
@@ -1999,6 +2000,7 @@ void CConnman::ThreadMessageHandler()
 
 
 
+#ifndef CLOUDABI
 bool CConnman::BindListenPort(const CService &addrBind, std::string& strError, bool fWhitelisted)
 {
     strError = "";
@@ -2034,11 +2036,15 @@ bool CConnman::BindListenPort(const CService &addrBind, std::string& strError, b
     // Different way of disabling SIGPIPE on BSD
     setsockopt(hListenSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&nOne, sizeof(int));
 #endif
+#ifdef SO_REUSEADDR
     // Allow binding if the port is still in TIME_WAIT state after
     // the program was closed and restarted.
     setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int));
+#endif
+#ifdef TCP_NODELAY
     // Disable Nagle's algorithm
     setsockopt(hListenSocket, IPPROTO_TCP, TCP_NODELAY, (void*)&nOne, sizeof(int));
+#endif
 #else
     setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&nOne, sizeof(int));
     setsockopt(hListenSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&nOne, sizeof(int));
@@ -2066,7 +2072,6 @@ bool CConnman::BindListenPort(const CService &addrBind, std::string& strError, b
         setsockopt(hListenSocket, IPPROTO_IPV6, IPV6_PROTECTION_LEVEL, (const char*)&nProtLevel, sizeof(int));
 #endif
     }
-
     if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, len) == SOCKET_ERROR)
     {
         int nErr = WSAGetLastError();
@@ -2096,6 +2101,15 @@ bool CConnman::BindListenPort(const CService &addrBind, std::string& strError, b
 
     return true;
 }
+#endif
+
+bool CConnman::BindListenFD(SOCKET hListenSocket, std::string& strError, bool fWhitelisted)
+{
+    LogPrintf("Listening on fd %d\n", hListenSocket);
+
+    vhListenSocket.push_back(ListenSocket(hListenSocket, fWhitelisted));
+    return true;
+}
 
 void Discover(boost::thread_group& threadGroup)
 {
@@ -2117,7 +2131,7 @@ void Discover(boost::thread_group& threadGroup)
             }
         }
     }
-#else
+#elif !defined(CLOUDABI)
     // Get local host ip
     struct ifaddrs* myaddrs;
     if (getifaddrs(&myaddrs) == 0)

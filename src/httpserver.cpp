@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <future>
+#include <deque>
 
 #include <event2/event.h>
 #include <event2/http.h>
@@ -318,6 +319,7 @@ static bool ThreadHTTP(struct event_base* base, struct evhttp* http)
 /** Bind HTTP server to specified addresses */
 static bool HTTPBindAddresses(struct evhttp* http)
 {
+#ifndef CLOUDABI
     int defaultPort = GetArg("-rpcport", BaseParams().RPCPort());
     std::vector<std::pair<std::string, uint16_t> > endpoints;
 
@@ -351,6 +353,21 @@ static bool HTTPBindAddresses(struct evhttp* http)
             LogPrintf("Binding RPC on address %s port %i failed.\n", i->first, i->second);
         }
     }
+#else
+    int fd = GetArg("-rpcfd", -1);
+    if (fd >= 0) {
+        LogPrintf("Binding RPC on fd %d.\n", fd);
+        /* Need to explicitly set the socket to non-blocking */
+        evutil_make_socket_nonblocking(fd);
+
+        evhttp_bound_socket *bind_handle = evhttp_accept_socket_with_handle(http, fd);
+        if (bind_handle) {
+            boundSockets.push_back(bind_handle);
+        } else {
+            LogPrintf("Binding RPC on fd %d failed.\n", fd);
+        }
+    }
+#endif
     return !boundSockets.empty();
 }
 

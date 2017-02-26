@@ -20,7 +20,7 @@ public:
     static CZMQNotificationInterface* Create();
 
 protected:
-    bool Initialize();
+    bool Initialize(int fd);
     void Shutdown();
 
     // CValidationInterface

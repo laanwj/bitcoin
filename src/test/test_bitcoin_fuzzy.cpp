@@ -49,6 +49,7 @@ enum TEST_ID {
 };
 
 bool read_stdin(std::vector<char> &data) {
+#ifndef CLOUDABI
     char buffer[1024];
     ssize_t length=0;
     while((length = read(STDIN_FILENO, buffer, 1024)) > 0) {
@@ -57,6 +58,9 @@ bool read_stdin(std::vector<char> &data) {
         if (data.size() > (1<<20)) return false;
     }
     return length==0;
+#else
+    return false;
+#endif
 }
 
 int main(int argc, char **argv)

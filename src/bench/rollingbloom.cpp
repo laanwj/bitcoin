@@ -26,7 +26,9 @@ static void RollingBloom(benchmark::State& state)
             int64_t b = GetTimeMicros();
             filter.insert(data);
             int64_t e = GetTimeMicros();
+#ifndef CLOUDABI
             std::cout << "RollingBloom-refresh,1," << (e-b)*0.000001 << "," << (e-b)*0.000001 << "," << (e-b)*0.000001 << "\n";
+#endif
             countnow = 0;
         } else {
             filter.insert(data);

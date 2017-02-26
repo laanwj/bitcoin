@@ -77,6 +77,7 @@ fs::path GetAuthCookieFile()
 
 bool GenerateAuthCookie(std::string *cookie_out)
 {
+#ifndef CLOUDABI
     const size_t COOKIE_SIZE = 32;
     unsigned char rand_pwd[COOKIE_SIZE];
     GetRandBytes(rand_pwd, COOKIE_SIZE);
@@ -99,10 +100,14 @@ bool GenerateAuthCookie(std::string *cookie_out)
     if (cookie_out)
         *cookie_out = cookie;
     return true;
+#else
+    return false;
+#endif
 }
 
 bool GetAuthCookie(std::string *cookie_out)
 {
+#ifndef CLOUDABI
     std::ifstream file;
     std::string cookie;
     fs::path filepath = GetAuthCookieFile();
@@ -115,14 +120,19 @@ bool GetAuthCookie(std::string *cookie_out)
     if (cookie_out)
         *cookie_out = cookie;
     return true;
+#else
+    return false;
+#endif
 }
 
 void DeleteAuthCookie()
 {
+#ifndef CLOUDABI
     try {
         fs::remove(GetAuthCookieFile());
     } catch (const fs::filesystem_error& e) {
         LogPrintf("%s: Unable to remove random auth cookie file: %s\n", __func__, e.what());
     }
+#endif
 }
 

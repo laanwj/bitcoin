@@ -56,7 +56,7 @@ static int zmq_send_multipart(void *sock, const void* data, size_t size, ...)
     return 0;
 }
 
-bool CZMQAbstractPublishNotifier::Initialize(void *pcontext)
+bool CZMQAbstractPublishNotifier::Initialize(void *pcontext, int fd)
 {
     assert(!psocket);
 
@@ -72,7 +72,15 @@ bool CZMQAbstractPublishNotifier::Initialize(void *pcontext)
             return false;
         }
 
-        int rc = zmq_bind(psocket, address.c_str());
+        int rc = zmq_setsockopt(psocket, ZMQ_USE_FD, &fd, sizeof(fd));
+        if (rc!=0)
+        {
+            zmqError("Failed to set FD");
+            zmq_close(psocket);
+            return false;
+        }
+
+        rc = zmq_bind(psocket, address.c_str());
         if (rc!=0)
         {
             zmqError("Failed to bind address");
