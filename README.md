@@ -4,6 +4,11 @@ Laanwj's Bitcoin Core repository
 In progress
 -------------
 
+### Security
+
+- [2017_03_cabi_fs](https://github.com/laanwj/bitcoin/tree/2017_03_cabi_fs)
+  Sandboxed CloudABI port.
+
 ### Hashing performance
 
 - [2016_05_sha256_accel](https://github.com/laanwj/bitcoin/tree/2016_05_sha256_accel)
