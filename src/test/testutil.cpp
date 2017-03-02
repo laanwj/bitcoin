@@ -10,10 +10,18 @@
 
 #include "fs.h"
 
-fs::path GetTempPath() {
 #ifdef CLOUDABI
-    return fs::path(".");
-#else
-    return fs::temp_directory_path();
-#endif
+static fs::path temp_path;
+
+void SetTempPath(const fs::path &p) {
+    temp_path = p;
 }
+fs::path GetTempPath() {
+    return temp_path;
+}
+#else
+fs::path GetTempPath() {
+    return fs::path(".");
+}
+#endif
+
