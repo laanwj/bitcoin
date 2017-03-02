@@ -1,82 +1,83 @@
-Bitcoin Core integration/staging tree
+Bitcoin Core CloudABI experiment
 =====================================
 
-[![Build Status](https://travis-ci.org/bitcoin/bitcoin.svg?branch=master)](https://travis-ci.org/bitcoin/bitcoin)
+Example configure/build (my development platform for this is FreeBSD 11.0 with 
+the [appropriate packages](https://nuxi.nl/cloudabi/freebsd/) installed), as well as:
 
-https://bitcoincore.org
+```bash
+pkg install x86_64-unknown-cloudabi-argdata x86_64-unknown-cloudabi-boost x86_64-unknown-cloudabi-leveldb x86_64-unknown-cloudabi-libevent x86_64-unknown-cloudabi-libressl x86_64-unknown-cloudabi-zeromq
+```
 
-What is Bitcoin?
-----------------
+Then set up the build system using:
 
-Bitcoin is an experimental digital currency that enables instant payments to
-anyone, anywhere in the world. Bitcoin uses peer-to-peer technology to operate
-with no central authority: managing transactions and issuing money are carried
-out collectively by the network. Bitcoin Core is the name of open source
-software which enables the use of this currency.
+```bash
+./autogen
+./configure --host=x86_64-unknown-cloudabi \
+    --disable-wallet \
+    --with-boost-libdir=/usr/local/x86_64-unknown-cloudabi/lib \
+    --without-utils \
+    ac_cv_c_bigendian=no \
+    CPPFLAGS="-DCLOUDABI -DBOOST_DISABLE_ASSERTS -fno-sanitize=safe-stack" \
+    LDFLAGS="-fno-sanitize=safe-stack"
+gmake -j10
+```
 
-For more information, as well as an immediately useable, binary version of
-the Bitcoin Core software, see https://bitcoin.org/en/download, or read the
-[original whitepaper](https://bitcoincore.org/bitcoin.pdf).
+Example `bitcoind.yaml` configuration:
+```yaml
+%TAG ! tag:nuxi.nl,2015:cloudabi/
+---
+datadir: !file
+  path: /home/user/.bitcoin
+console: !fd stdout
+rpc: !socket
+  bind: 127.0.0.1:8332
+p2p: !socket
+  bind: 0.0.0.0:8333
+zmq: !socket
+  bind: 0.0.0.0:28332
+args:
+  printtoconsole: 1
+  rpcuser: "test"
+  rpcpassword: "test"
+  connect: 0
+  debug: ["rpc","http","libevent"]
+  listenonion: 0
+  rest: true
+  zmqpubhashblock: "ipc:///"
+  #  zmqpubhashtx: "ipc:///"
+  #  zmqpubrawblock: "ipc:///"
+  #  zmqpubrawtx: "ipc:///"
 
-License
--------
+```
 
-Bitcoin Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
-information or see https://opensource.org/licenses/MIT.
+Invoke `bitcoind` with
+```
+cloudabi-run src/bitcoind < ~/bitcoind.yaml
+```
 
-Development Process
+Running the tests
 -------------------
 
-The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoin/bitcoin/tags) are created
-regularly to indicate new official, stable release versions of Bitcoin Core.
+Create a `bitcoin-test.yaml`
+```
+%TAG ! tag:nuxi.nl,2015:cloudabi/
+---
+terminal: !fd stdout
+arguments: [--color_output]
+tempdir: !file
+  path: /tmp/test
+```
 
-The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+Invoke the tests with
+```
+cloudabi-run src/test/test_bitcoin < ~/bitcoin-test.yaml
+```
 
-The developer [mailing list](https://lists.linuxfoundation.org/mailman/listinfo/bitcoin-dev)
-should be used to discuss complicated or controversial changes before working
-on a patch set.
+Currently, the following tests are failing with the default compile options:
 
-Developer IRC can be found on Freenode at #bitcoin-core-dev.
+- `key_tests/key_test1`
+- `script_tests/script_build`
 
-Testing
--------
-
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test on short notice. Please be patient and help out by testing
-other people's pull requests, and remember this is a security-critical project where any mistake might cost people
-lots of money.
-
-### Automated Testing
-
-Developers are strongly encouraged to write [unit tests](src/test/README.md) for new code, and to
-submit new unit tests for old code. Unit tests can be compiled and run
-(assuming they weren't disabled in configure) with: `make check`. Further details on running
-and extending unit tests can be found in [/src/test/README.md](/src/test/README.md).
-
-There are also [regression and integration tests](/qa) of the RPC interface, written
-in Python, that are run automatically on the build server.
-These tests can be run (if the [test dependencies](/qa) are installed) with: `qa/pull-tester/rpc-tests.py`
-
-The Travis CI system makes sure that every pull request is built for Windows, Linux, and OS X, and that unit/sanity tests are run automatically.
-
-### Manual Quality Assurance (QA) Testing
-
-Changes should be tested by somebody other than the developer who wrote the
-code. This is especially important for large or high-risk changes. It is useful
-to add a test plan to the pull request description if testing the changes is
-not straightforward.
-
-Translations
-------------
-
-Changes to translations as well as new translations can be submitted to
-[Bitcoin Core's Transifex page](https://www.transifex.com/projects/p/bitcoin/).
-
-Translations are periodically pulled from Transifex and merged into the git repository. See the
-[translation process](doc/translation_process.md) for details on how this works.
-
-**Important**: We do not accept translation changes as GitHub pull requests because the next
-pull from Transifex would automatically overwrite them again.
-
-Translators should also subscribe to the [mailing list](https://groups.google.com/forum/#!forum/bitcoin-translators).
+It looks like these failures are caused by `-fsanitize=safe-stack` which is enabled by default on
+CloudABI. Passing `-fno-sanitize=safe-stack` to the compiler and linker makes all tests pass.
+This points in the direction of a compiler bug in the specific version of clang4.0-devel.
