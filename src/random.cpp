@@ -31,6 +31,9 @@
 #ifdef HAVE_SYSCTL_ARND
 #include <sys/sysctl.h>
 #endif
+#ifdef CLOUDABI
+#include <cloudabi_syscalls.h>
+#endif
 
 #include <openssl/err.h>
 #include <openssl/rand.h>
@@ -102,7 +105,7 @@ static void RandAddSeedPerfmon()
 #endif
 }
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(CLOUDABI)
 /** Fallback: get 32 bytes of system entropy from /dev/urandom. The most
  * compatible way to get cryptographic randomness on UNIX-ish platforms.
  */
@@ -177,6 +180,10 @@ void GetOSRand(unsigned char *ent32)
         }
         have += len;
     } while (have < NUM_OS_RANDOM_BYTES);
+#elif defined(CLOUDABI)
+    if (cloudabi_sys_random_get(ent32, NUM_OS_RANDOM_BYTES) != 0) {
+        RandFailure();
+    }
 #else
     /* Fall back to /dev/urandom if there is no specific method implemented to
      * get system entropy for this OS.
