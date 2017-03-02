@@ -2521,7 +2521,7 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
 
             // Transactions in the connected block are notified
             for (const auto& pair : connectTrace.blocksConnected) {
-                assert(pair.second);
+                assert(bool(pair.second));
                 const CBlock& block = *(pair.second);
                 for (unsigned int i = 0; i < block.vtx.size(); i++)
                     GetMainSignals().SyncTransaction(*block.vtx[i], pair.first, i);

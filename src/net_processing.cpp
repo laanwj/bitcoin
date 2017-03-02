@@ -893,7 +893,7 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
     case MSG_TX:
     case MSG_WITNESS_TX:
         {
-            assert(recentRejects);
+            assert(bool(recentRejects));
             if (chainActive.Tip()->GetBlockHash() != hashRecentRejectsChainTip)
             {
                 // If the chain tip has changed previously rejected transactions
@@ -1860,7 +1860,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                             // Do not use rejection cache for witness transactions or
                             // witness-stripped transactions, as they can have been malleated.
                             // See https://github.com/bitcoin/bitcoin/issues/8279 for details.
-                            assert(recentRejects);
+                            assert(bool(recentRejects));
                             recentRejects->insert(orphanHash);
                         }
                     }
@@ -1905,7 +1905,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                 // Do not use rejection cache for witness transactions or
                 // witness-stripped transactions, as they can have been malleated.
                 // See https://github.com/bitcoin/bitcoin/issues/8279 for details.
-                assert(recentRejects);
+                assert(bool(recentRejects));
                 recentRejects->insert(tx.GetHash());
                 if (RecursiveDynamicUsage(*ptx) < 100000) {
                     AddToCompactExtraTransactions(ptx);
