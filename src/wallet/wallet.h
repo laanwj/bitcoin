@@ -636,8 +636,6 @@ private:
     /* the HD chain data model (external chain counters) */
     CHDChain hdChain;
 
-    bool fFileBacked;
-
     std::set<int64_t> setKeyPool;
 
     int64_t nTimeFirstKey;
@@ -658,9 +656,7 @@ private:
 public:
     /*
      * Main wallet lock.
-     * This lock protects all the fields added by CWallet
-     *   except for:
-     *      fFileBacked (immutable after instantiation)
+     * This lock protects all the fields added by CWallet.
      */
     mutable CCriticalSection cs_wallet;
 
@@ -703,15 +699,16 @@ public:
     MasterKeyMap mapMasterKeys;
     unsigned int nMasterKeyMaxID;
 
-    CWallet()
+    // Create wallet with dummy database handle
+    CWallet(): dbw(new CWalletDBWrapper())
     {
         SetNull();
     }
 
+    // Create wallet with passed-in database handle
     CWallet(std::unique_ptr<CWalletDBWrapper> dbw_in) : dbw(std::move(dbw_in))
     {
         SetNull();
-        fFileBacked = true;
     }
 
     ~CWallet()
@@ -724,7 +721,6 @@ public:
     {
         nWalletVersion = FEATURE_BASE;
         nWalletMaxVersion = FEATURE_BASE;
-        fFileBacked = false;
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
         nOrderPosNext = 0;

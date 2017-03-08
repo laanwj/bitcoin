@@ -94,6 +94,12 @@ class CWalletDBWrapper
 {
     friend class CDB;
 public:
+    /** Create dummy DB handle */
+    CWalletDBWrapper(): env(nullptr)
+    {
+    }
+
+    /** Create DB handle to real database */
     CWalletDBWrapper(CDBEnv *env_in, const std::string &strFile_in):
         env(env_in), strFile(strFile_in)
     {
@@ -110,6 +116,12 @@ public:
     /** Get a name for this database, for debugging etc.
      */
     std::string GetName() const { return strFile; }
+
+    /** Return whether this database handle is a dummy for testing.
+     * Only to be used at a low level, application should ideally not care
+     * about this.
+     */
+    bool IsDummy() { return env == nullptr; }
 
 private:
     /** BerkeleyDB specific */
@@ -187,7 +199,7 @@ protected:
     bool Write(const K& key, const T& value, bool fOverwrite = true)
     {
         if (!pdb)
-            return false;
+            return true;
         if (fReadOnly)
             assert(!"Write called on database in read-only mode");
 
