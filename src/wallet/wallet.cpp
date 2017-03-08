@@ -8,6 +8,7 @@
 #include "base58.h"
 #include "checkpoints.h"
 #include "chain.h"
+#include "clientversion.h"
 #include "wallet/coincontrol.h"
 #include "consensus/consensus.h"
 #include "consensus/validation.h"
@@ -438,15 +439,16 @@ bool CWallet::Verify()
     std::string strError;
     if (!CWalletDB::VerifyEnvironment(walletFile, GetDataDir().string(), strError))
         return InitError(strError);
-
     if (GetBoolArg("-salvagewallet", false))
     {
+        return InitError("-salvagewallet is not implemented");
+#if 0
         // Recover readable keypairs:
         CWallet dummyWallet;
         if (!CWalletDB::Recover(walletFile, (void *)&dummyWallet, CWalletDB::RecoverKeysOnlyFilter))
             return false;
+#endif
     }
-
     std::string strWarning;
     bool dbV = CWalletDB::VerifyDatabaseFile(walletFile, GetDataDir().string(), strWarning, strError);
     if (!strWarning.empty())
@@ -3494,9 +3496,7 @@ std::string CWallet::GetWalletHelpString(bool showDebug)
     {
         strUsage += HelpMessageGroup(_("Wallet debugging/testing options:"));
 
-        strUsage += HelpMessageOpt("-dblogsize=<n>", strprintf("Flush wallet database activity from memory to disk log every <n> megabytes (default: %u)", DEFAULT_WALLET_DBLOGSIZE));
         strUsage += HelpMessageOpt("-flushwallet", strprintf("Run a thread to flush wallet periodically (default: %u)", DEFAULT_FLUSHWALLET));
-        strUsage += HelpMessageOpt("-privdb", strprintf("Sets the DB_PRIVATE flag in the wallet db environment (default: %u)", DEFAULT_WALLET_PRIVDB));
         strUsage += HelpMessageOpt("-walletrejectlongchains", strprintf(_("Wallet will not create transactions that violate mempool chain limits (default: %u)"), DEFAULT_WALLET_REJECT_LONG_CHAINS));
     }
 
@@ -3511,7 +3511,7 @@ CWallet* CWallet::CreateWalletFromFile(const std::string walletFile)
     if (GetBoolArg("-zapwallettxes", false)) {
         uiInterface.InitMessage(_("Zapping all transactions from wallet..."));
 
-        std::unique_ptr<CWalletDBWrapper> dbw(new CWalletDBWrapper(&bitdb, walletFile));
+        std::unique_ptr<CWalletDBWrapper> dbw(new CWalletDBWrapper());
         CWallet *tempWallet = new CWallet(std::move(dbw));
         DBErrors nZapWalletRet = tempWallet->ZapWalletTx(vWtx);
         if (nZapWalletRet != DB_LOAD_OK) {
@@ -3527,7 +3527,7 @@ CWallet* CWallet::CreateWalletFromFile(const std::string walletFile)
 
     int64_t nStart = GetTimeMillis();
     bool fFirstRun = true;
-    std::unique_ptr<CWalletDBWrapper> dbw(new CWalletDBWrapper(&bitdb, walletFile));
+    std::unique_ptr<CWalletDBWrapper> dbw(new CWalletDBWrapper());
     CWallet *walletInstance = new CWallet(std::move(dbw));
     DBErrors nLoadWalletRet = walletInstance->LoadWallet(fFirstRun);
     if (nLoadWalletRet != DB_LOAD_OK)

@@ -7,15 +7,18 @@
 #define BITCOIN_WALLET_WALLETDB_H
 
 #include "amount.h"
+#include "db.h"
 #include "primitives/transaction.h"
-#include "wallet/db.h"
 #include "key.h"
+#include "streams.h"
 
 #include <list>
 #include <stdint.h>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <boost/filesystem/path.hpp>
 
 static const bool DEFAULT_FLUSHWALLET = true;
 
@@ -33,6 +36,7 @@ class uint256;
 /** Error statuses for the wallet database */
 enum DBErrors
 {
+    DB_NOTFOUND,
     DB_LOAD_OK,
     DB_CORRUPT,
     DB_NONCRITICAL_ERROR,
@@ -179,9 +183,7 @@ public:
     static bool Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue));
     /* Recover convenience-function to bypass the key filter callback, called when verify fails, recovers everything */
     static bool Recover(const std::string& filename);
-    /* Recover filter (used as callback), will only let keys (cryptographical keys) as KV/key-type pass through */
-    static bool RecoverKeysOnlyFilter(void *callbackData, CDataStream ssKey, CDataStream ssValue);
-    /* Function to determine if a certain KV/key-type is a key (cryptographical key) type */
+    /* Function to determin if a certain KV/key-type is a key (cryptographical key) type */
     static bool IsKeyType(const std::string& strType);
     /* verifies the database environment */
     static bool VerifyEnvironment(const std::string& walletFile, const boost::filesystem::path& dataDir, std::string& errorStr);

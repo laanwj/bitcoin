@@ -4,6 +4,7 @@
 
 #include "base58.h"
 #include "chain.h"
+#include "clientversion.h"
 #include "rpc/server.h"
 #include "init.h"
 #include "validation.h"

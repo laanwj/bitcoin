@@ -6,6 +6,7 @@
 #include "wallet/walletdb.h"
 
 #include "base58.h"
+#include "clientversion.h"
 #include "consensus/validation.h"
 #include "validation.h" // For CheckTransaction
 #include "protocol.h"
@@ -777,6 +778,7 @@ DBErrors CWalletDB::ZapWalletTx(std::vector<CWalletTx>& vWtx)
 
 void MaybeCompactWalletDB()
 {
+#if 0
     static std::atomic<bool> fOneThread;
     if (fOneThread.exchange(true)) {
         return;
@@ -802,6 +804,7 @@ void MaybeCompactWalletDB()
         }
     }
     fOneThread = false;
+#endif
 }
 
 //
@@ -809,47 +812,22 @@ void MaybeCompactWalletDB()
 //
 bool CWalletDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue))
 {
-    return CDB::Recover(filename, callbackDataIn, recoverKVcallback);
+    return false;
 }
 
 bool CWalletDB::Recover(const std::string& filename)
 {
-    // recover without a key filter callback
-    // results in recovering all record types
-    return CWalletDB::Recover(filename, NULL, NULL);
-}
-
-bool CWalletDB::RecoverKeysOnlyFilter(void *callbackData, CDataStream ssKey, CDataStream ssValue)
-{
-    CWallet *dummyWallet = reinterpret_cast<CWallet*>(callbackData);
-    CWalletScanState dummyWss;
-    std::string strType, strErr;
-    bool fReadOK;
-    {
-        // Required in LoadKeyMetadata():
-        LOCK(dummyWallet->cs_wallet);
-        fReadOK = ReadKeyValue(dummyWallet, ssKey, ssValue,
-                               dummyWss, strType, strErr);
-    }
-    if (!IsKeyType(strType) && strType != "hdchain")
-        return false;
-    if (!fReadOK)
-    {
-        LogPrintf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType, strErr);
-        return false;
-    }
-
-    return true;
+    return false;
 }
 
 bool CWalletDB::VerifyEnvironment(const std::string& walletFile, const boost::filesystem::path& dataDir, std::string& errorStr)
 {
-    return CDB::VerifyEnvironment(walletFile, dataDir, errorStr);
+    return true;
 }
 
 bool CWalletDB::VerifyDatabaseFile(const std::string& walletFile, const boost::filesystem::path& dataDir, std::string& warningStr, std::string& errorStr)
 {
-    return CDB::VerifyDatabaseFile(walletFile, dataDir, errorStr, warningStr, CWalletDB::Recover);
+    return true;
 }
 
 bool CWalletDB::WriteDestData(const std::string &address, const std::string &key, const std::string &value)
