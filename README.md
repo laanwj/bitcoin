@@ -80,4 +80,6 @@ Currently, the following tests are failing with the default compile options:
 
 It looks like these failures are caused by `-fsanitize=safe-stack` which is enabled by default on
 CloudABI. Passing `-fno-sanitize=safe-stack` to the compiler and linker makes all tests pass.
-This points in the direction of a compiler bug in the specific version of clang4.0-devel.
+This is a compiler bug. An [upstream issue](https://bugs.llvm.org//show_bug.cgi?id=32143) has been filed.
+
+Do not compile Bitcoin or secp256k1 with SafeStack enabled until this has been fixed!
