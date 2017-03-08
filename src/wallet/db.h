@@ -117,6 +117,10 @@ public:
      */
     std::string GetName() const { return strFile; }
 
+    /** Make sure all changes are flushed to disk.
+     */
+    void Flush(bool shutdown);
+
     /** Return whether this database handle is a dummy for testing.
      * Only to be used at a low level, application should ideally not care
      * about this.
@@ -139,6 +143,7 @@ protected:
     DbTxn* activeTxn;
     bool fReadOnly;
     bool fFlushOnClose;
+    CDBEnv *env;
 
     explicit CDB(CWalletDBWrapper& dbw, const char* pszMode = "r+", bool fFlushOnCloseIn=true);
     ~CDB() { Close(); }
