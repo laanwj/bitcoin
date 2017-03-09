@@ -286,6 +286,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         // Taking advantage of the fact that pair serialization
         // is just the two items serialized one after the other
         ssKey >> strType;
+        LogPrintf("Receiving type: %s\n", strType);
         if (strType == "name")
         {
             std::string strAddress;
@@ -575,9 +576,11 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
             LogPrintf("Error getting wallet database cursor\n");
             return DB_CORRUPT;
         }
+        LogPrintf("Iterating over cursor\n");
 
         while (true)
         {
+            LogPrintf("Record\n");
             // Read next record
             CDataStream ssKey(SER_DISK, CLIENT_VERSION);
             CDataStream ssValue(SER_DISK, CLIENT_VERSION);
