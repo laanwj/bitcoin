@@ -18,7 +18,14 @@ In progress
 - [2016_05_sha256_accel](https://github.com/laanwj/bitcoin/tree/2016_05_sha256_accel)
   experiment with optimized SHA256 variants. 
 
-### Database experiments
+### Wallet database experiments
+
+- [20170310_experiment_leveldb_wallet](https://github.com/laanwj/bitcoin/tree/20170310_experiment_leveldb_wallet)
+  Experiment with wallet running LevelDB as wallet backend instead of BerkeleyDB. At the time of writing
+  passes the unit tests and QA tests apart from `backupwallet` which isn't
+  implemented at the moment..
+
+### UTXO database experiments
 
 - [2016_04_mdb](https://github.com/laanwj/bitcoin/tree/2016_04_mdb)
   LMDB experiment - change UTXO and block index DB to use LMDB (aka "Symas
