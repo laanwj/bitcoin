@@ -287,7 +287,7 @@ def initialize_chain(test_dir, num_nodes, cachedir):
         disable_mocktime()
         for i in range(MAX_NODES):
             os.remove(log_filename(cachedir, i, "debug.log"))
-            os.remove(log_filename(cachedir, i, "db.log"))
+            #os.remove(log_filename(cachedir, i, "db.log"))
             os.remove(log_filename(cachedir, i, "peers.dat"))
             os.remove(log_filename(cachedir, i, "fee_estimates.dat"))
 
