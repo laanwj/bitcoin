@@ -178,9 +178,12 @@ void Interrupt(boost::thread_group& threadGroup)
     threadGroup.interrupt_all();
 }
 
+uint64_t GetHashCount();
+
 void Shutdown()
 {
     LogPrintf("%s: In progress...\n", __func__);
+    LogPrintf("Stopping after %d hashing operations\n", GetHashCount());
     static CCriticalSection cs_Shutdown;
     TRY_LOCK(cs_Shutdown, lockShutdown);
     if (!lockShutdown)

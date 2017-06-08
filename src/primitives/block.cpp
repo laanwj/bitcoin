@@ -10,8 +10,18 @@
 #include "utilstrencodings.h"
 #include "crypto/common.h"
 
+#include <atomic>
+
+std::atomic<uint64_t> g_num_hashes(0);
+
+uint64_t GetHashCount()
+{
+    return g_num_hashes;
+}
+
 uint256 CBlockHeader::GetHash() const
 {
+    g_num_hashes += 1;
     return SerializeHash(*this);
 }
 
