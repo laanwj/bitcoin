@@ -1180,6 +1180,10 @@ PrecomputedTransactionData::PrecomputedTransactionData(const CTransaction& txTo)
 uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType, const CAmount& amount, SigVersion sigversion, const PrecomputedTransactionData* cache)
 {
     assert(nIn < txTo.vin.size());
+    int nForkHashType = nHashType;
+    if (nHashType & 0x40) {
+        nForkHashType |= 79 << 8;
+    }
 
     if (sigversion == SIGVERSION_WITNESS_V0 || (nHashType & 0x40)) {
         uint256 hashPrevouts;
@@ -1222,7 +1226,7 @@ uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsig
         // Locktime
         ss << txTo.nLockTime;
         // Sighash type
-        ss << nHashType;
+        ss << nForkHashType;
 
         return ss.GetHash();
     }
@@ -1242,7 +1246,7 @@ uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsig
 
     // Serialize and hash
     CHashWriter ss(SER_GETHASH, 0);
-    ss << txTmp << nHashType;
+    ss << txTmp << nForkHashType;
     return ss.GetHash();
 }
 
