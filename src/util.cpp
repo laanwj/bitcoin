@@ -381,7 +381,7 @@ bool LockDirectory(const fs::path& directory, const std::string lockfile_name, b
     static std::map<std::string, std::unique_ptr<boost::interprocess::file_lock>> locks;
     // Protect the map with a mutex
     static std::mutex cs;
-    std::unique_lock<std::mutex> ulock(cs);
+    std::lock_guard<std::mutex> ulock(cs);
     fs::path pathLockFile = directory / lockfile_name;
 
     // If a lock for this directory already exists in the map, don't try to re-lock it
