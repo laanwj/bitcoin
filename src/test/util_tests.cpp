@@ -13,6 +13,10 @@
 
 #include <stdint.h>
 #include <vector>
+#ifndef WIN32
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
 
 #include <boost/test/unit_test.hpp>
 
@@ -601,6 +605,73 @@ BOOST_AUTO_TEST_CASE(test_ParseFixedPoint)
     BOOST_CHECK(!ParseFixedPoint("1.1e", 8, &amount));
     BOOST_CHECK(!ParseFixedPoint("1.1e-", 8, &amount));
     BOOST_CHECK(!ParseFixedPoint("1.", 8, &amount));
+}
+
+static const std::string LOCKNAME = ".lock";
+
+static void TestOtherThread(fs::path dirname, bool *result)
+{
+    *result = LockDirectory(dirname, LOCKNAME);
+}
+
+#ifndef WIN32 // Cannot do this test on WIN32 due to lack of fork()
+static void TestOtherProcess(fs::path dirname, int fd)
+{
+    char ch;
+    int rv = read(fd, &ch, 1); // Wait for start signal
+    assert(rv == 1);
+    assert(ch == 'S');
+    exit(LockDirectory(dirname, LOCKNAME));
+}
+#endif
+
+BOOST_AUTO_TEST_CASE(test_LockDirectory)
+{
+    fs::path dirname = fs::temp_directory_path() / fs::unique_path();
+#ifndef WIN32
+    // Fork another process for testing before creating the lock, so that we
+    // won't fork while holding the lock (which might be undefined, and is not
+    // relevant as test case as that is avoided with -daemonize).
+    // Create a pipe to send a start signal after we've aquired the lock. This is
+    // an unidirectional pipe, so the return value will be used to pass back the result.
+    int fd[2];
+    BOOST_CHECK_EQUAL(pipe(fd), 0);
+    pid_t pid = fork();
+    if (!pid) {
+        BOOST_CHECK_EQUAL(close(fd[1]), 0); // Child: close write end of pipe
+        TestOtherProcess(dirname, fd[0]);
+    }
+    BOOST_CHECK_EQUAL(close(fd[0]), 0); // Parent: close read end of pipe
+#endif
+    // Lock on non-existent directory should fail
+    BOOST_CHECK_EQUAL(LockDirectory(dirname, LOCKNAME), false);
+
+    fs::create_directories(dirname);
+
+    // First lock on new directory should succeed
+    BOOST_CHECK_EQUAL(LockDirectory(dirname, LOCKNAME), true);
+
+    // Another lock on the directory from the same thread should succeed
+    BOOST_CHECK_EQUAL(LockDirectory(dirname, LOCKNAME), true);
+
+    // Another lock on the directory from a different thread within the same process should succeed
+    bool threadresult;
+    std::thread thr(TestOtherThread, dirname, &threadresult);
+    thr.join();
+    BOOST_CHECK_EQUAL(threadresult, true);
+#ifndef WIN32
+    // Start test in child process, then wait for it to complete
+    const char ch = 'S';
+    BOOST_CHECK_EQUAL(write(fd[1], &ch, 1), 1);
+    int processstatus;
+    BOOST_CHECK_EQUAL(waitpid(pid, &processstatus, 0), pid);
+
+    // Lock on data directory from child should have failed, because this process is holding it
+    BOOST_CHECK_EQUAL(processstatus, (int)false);
+#endif
+    // Clean up
+    fs::remove(dirname / LOCKNAME);
+    fs::remove(dirname);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
