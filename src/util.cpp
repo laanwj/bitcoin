@@ -380,13 +380,14 @@ bool LockDirectory(const fs::path& directory, const std::string lockfile_name, b
     if (file) fclose(file);
 
     try {
-        static std::map<std::string, boost::interprocess::file_lock> locks;
-        boost::interprocess::file_lock& lock = locks.emplace(pathLockFile.string(), pathLockFile.string().c_str()).first->second;
-        if (!lock.try_lock()) {
+        static std::map<std::string, std::unique_ptr<boost::interprocess::file_lock>> locks;
+        std::unique_ptr<boost::interprocess::file_lock> &lock = locks.emplace(pathLockFile.string(),
+            MakeUnique<boost::interprocess::file_lock>(pathLockFile.string().c_str())).first->second;
+        if (!lock->try_lock()) {
             return false;
         }
         if (probe_only) {
-            lock.unlock();
+            lock->unlock();
         }
     } catch (const boost::interprocess::interprocess_exception& e) {
         return error("Error while attempting to lock directory %s: %s", directory.string(), e.what());
