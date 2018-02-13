@@ -399,7 +399,7 @@ bool LockDirectory(const fs::path& directory, const std::string lockfile_name, b
             return false;
         }
         if (!probe_only) {
-            // Lock succesful and we're not just probing, put it into the map
+            // Lock successful and we're not just probing, put it into the map
             locks.emplace(pathLockFile.string(), std::move(lock));
         }
     } catch (const boost::interprocess::interprocess_exception& e) {
