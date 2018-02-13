@@ -670,8 +670,7 @@ BOOST_AUTO_TEST_CASE(test_LockDirectory)
     BOOST_CHECK_EQUAL(processstatus, (int)false);
 #endif
     // Clean up
-    fs::remove(dirname / LOCKNAME);
-    fs::remove(dirname);
+    fs::removeall(dirname);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
