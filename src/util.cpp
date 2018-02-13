@@ -381,8 +381,12 @@ bool LockDirectory(const fs::path& directory, const std::string lockfile_name, b
 
     try {
         static std::map<std::string, std::unique_ptr<boost::interprocess::file_lock>> locks;
-        std::unique_ptr<boost::interprocess::file_lock> &lock = locks.emplace(pathLockFile.string(),
-            MakeUnique<boost::interprocess::file_lock>(pathLockFile.string().c_str())).first->second;
+        auto it = locks.emplace(pathLockFile.string(),
+            MakeUnique<boost::interprocess::file_lock>(pathLockFile.string().c_str()));
+        if (!it.second) { // A lock for this directory already exists in the map, don't try to re-lock it
+            return true;
+        }
+        auto& lock = it.first->second;
         if (!lock->try_lock()) {
             return false;
         }
