@@ -636,6 +636,7 @@ static void TestOtherProcess(fs::path dirname, std::string lockname, int fd)
             rv = write(fd, &ch, 1);
             break;
         case ExitCommand:
+            close(fd);
             exit(0);
         default:
             assert(0);
@@ -725,6 +726,7 @@ BOOST_AUTO_TEST_CASE(test_LockDirectory)
 
     // Restore SIGCHLD
     signal(SIGCHLD, old_handler);
+    BOOST_CHECK_EQUAL(close(fd[1]), 0); // Close our side of the socketpair
 #endif
     // Clean up
     ReleaseDirectoryLocks();
