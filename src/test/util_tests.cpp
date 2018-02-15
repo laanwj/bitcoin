@@ -613,13 +613,34 @@ static void TestOtherThread(fs::path dirname, std::string lockname, bool *result
 }
 
 #ifndef WIN32 // Cannot do this test on WIN32 due to lack of fork()
+static constexpr char LockCommand = 'L';
+static constexpr char UnlockCommand = 'U';
+static constexpr char ExitCommand = 'X';
+
 static void TestOtherProcess(fs::path dirname, std::string lockname, int fd)
 {
     char ch;
-    int rv = read(fd, &ch, 1); // Wait for start signal
-    assert(rv == 1);
-    assert(ch == 'S');
-    exit(LockDirectory(dirname, lockname));
+    int rv;
+    while (true) {
+        rv = read(fd, &ch, 1); // Wait for command
+        assert(rv == 1);
+        switch(ch) {
+        case LockCommand:
+            ch = LockDirectory(dirname, lockname);
+            rv = write(fd, &ch, 1);
+            assert(rv == 1);
+            break;
+        case UnlockCommand:
+            ReleaseDirectoryLocks();
+            ch = true; // Always succeeds
+            rv = write(fd, &ch, 1);
+            break;
+        case ExitCommand:
+            exit(0);
+        default:
+            assert(0);
+        }
+    }
 }
 #endif
 
@@ -636,23 +657,24 @@ BOOST_AUTO_TEST_CASE(test_LockDirectory)
     // Fork another process for testing before creating the lock, so that we
     // won't fork while holding the lock (which might be undefined, and is not
     // relevant as test case as that is avoided with -daemonize).
-    // Create a pipe to send a start signal after we've aquired the lock. This is
-    // an unidirectional pipe, so the return value will be used to pass back the result.
     int fd[2];
-    BOOST_CHECK_EQUAL(pipe(fd), 0);
+    BOOST_CHECK_EQUAL(socketpair(AF_UNIX, SOCK_STREAM, 0, fd), 0);
     pid_t pid = fork();
     if (!pid) {
-        BOOST_CHECK_EQUAL(close(fd[1]), 0); // Child: close write end of pipe
+        BOOST_CHECK_EQUAL(close(fd[1]), 0); // Child: close parent end
         TestOtherProcess(dirname, lockname, fd[0]);
     }
-    BOOST_CHECK_EQUAL(close(fd[0]), 0); // Parent: close read end of pipe
+    BOOST_CHECK_EQUAL(close(fd[0]), 0); // Parent: close child end
 #endif
     // Lock on non-existent directory should fail
     BOOST_CHECK_EQUAL(LockDirectory(dirname, lockname), false);
 
     fs::create_directories(dirname);
 
-    // First lock on new directory should succeed
+    // Probing lock on new directory should succeed
+    BOOST_CHECK_EQUAL(LockDirectory(dirname, lockname, true), true);
+
+    // Persistent lock on new directory should succeed
     BOOST_CHECK_EQUAL(LockDirectory(dirname, lockname), true);
 
     // Another lock on the directory from the same thread should succeed
@@ -664,14 +686,42 @@ BOOST_AUTO_TEST_CASE(test_LockDirectory)
     thr.join();
     BOOST_CHECK_EQUAL(threadresult, true);
 #ifndef WIN32
-    // Start test in child process, then wait for it to complete
-    const char ch = 'S';
-    BOOST_CHECK_EQUAL(write(fd[1], &ch, 1), 1);
-    int processstatus;
-    BOOST_CHECK_EQUAL(waitpid(pid, &processstatus, 0), pid);
+    // Try to aquire lock in child process while we're holding it, this should fail.
+    char ch;
+    BOOST_CHECK_EQUAL(write(fd[1], &LockCommand, 1), 1);
+    BOOST_CHECK_EQUAL(read(fd[1], &ch, 1), 1);
+    BOOST_CHECK_EQUAL((bool)ch, false);
 
-    // Lock on data directory from child should have failed, because this process is holding it
-    BOOST_CHECK_EQUAL(processstatus, (int)false);
+    // Give up our lock
+    ReleaseDirectoryLocks();
+    // Probing lock from our side now should succeed, but not hold on to the lock.
+    BOOST_CHECK_EQUAL(LockDirectory(dirname, lockname, true), true);
+
+    // Try to acquire the lock in the child process, this should be succesful.
+    BOOST_CHECK_EQUAL(write(fd[1], &LockCommand, 1), 1);
+    BOOST_CHECK_EQUAL(read(fd[1], &ch, 1), 1);
+    BOOST_CHECK_EQUAL((bool)ch, true);
+
+    // When we try to probe the lock now, it should fail.
+    BOOST_CHECK_EQUAL(LockDirectory(dirname, lockname, true), false);
+
+    // Unlock the lock in the child process
+    BOOST_CHECK_EQUAL(write(fd[1], &UnlockCommand, 1), 1);
+    BOOST_CHECK_EQUAL(read(fd[1], &ch, 1), 1);
+    BOOST_CHECK_EQUAL((bool)ch, true);
+
+    // When we try to probe the lock now, it should succeed.
+    BOOST_CHECK_EQUAL(LockDirectory(dirname, lockname, true), true);
+
+    // Re-lock the lock in the child process, then wait for it to exit, check
+    // successful return. After that, we check that exiting the process
+    // has released the lock as we would expect by probing it.
+    int processstatus;
+    BOOST_CHECK_EQUAL(write(fd[1], &LockCommand, 1), 1);
+    BOOST_CHECK_EQUAL(write(fd[1], &ExitCommand, 1), 1);
+    BOOST_CHECK_EQUAL(waitpid(pid, &processstatus, 0), pid);
+    BOOST_CHECK_EQUAL(processstatus, 0);
+    BOOST_CHECK_EQUAL(LockDirectory(dirname, lockname, true), true);
 
     // Restore SIGCHLD
     signal(SIGCHLD, old_handler);
