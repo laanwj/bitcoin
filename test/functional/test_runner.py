@@ -116,6 +116,7 @@ BASE_SCRIPTS= [
     'rpc_signmessage.py',
     'feature_nulldummy.py',
     'wallet_import_rescan.py',
+    'rpc_bind.py',
     'mining_basic.py',
     'wallet_bumpfee.py',
     'rpc_named_arguments.py',
@@ -154,7 +155,6 @@ EXTENDED_SCRIPTS = [
     # vv Tests less than 60s vv
     'feature_bip9_softforks.py',
     'p2p_feefilter.py',
-    'rpc_bind.py',
     # vv Tests less than 30s vv
     'feature_assumevalid.py',
     'example_test.py',
