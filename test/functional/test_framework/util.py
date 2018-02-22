@@ -236,7 +236,7 @@ class PortSeed:
     # Must be initialized with a unique integer for each process
     n = None
 
-def get_rpc_proxy(url, node_number, timeout=None, coveragedir=None):
+def get_rpc_proxy(url, node_number, timeout=None, coveragedir=None, source_address=None):
     """
     Args:
         url (str): URL of the RPC server to call
@@ -252,6 +252,8 @@ def get_rpc_proxy(url, node_number, timeout=None, coveragedir=None):
     proxy_kwargs = {}
     if timeout is not None:
         proxy_kwargs['timeout'] = timeout
+    if source_address is not None:
+        proxy_kwargs['source_address'] = source_address
 
     proxy = AuthServiceProxy(url, **proxy_kwargs)
     proxy.url = url  # store URL on proxy for info

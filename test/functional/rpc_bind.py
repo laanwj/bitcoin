@@ -46,7 +46,8 @@ class RPCBindTest(BitcoinTestFramework):
         self.nodes[0].rpchost = None
         self.start_nodes([base_args])
         # connect to node through non-loopback interface
-        node = get_rpc_proxy(rpc_url(get_datadir_path(self.options.tmpdir, 0), 0, "%s:%d" % (rpchost, rpcport)), 0, coveragedir=self.options.coveragedir)
+        node = get_rpc_proxy(rpc_url(get_datadir_path(self.options.tmpdir, 0), 0, "%s:%d" % (rpchost, rpcport)), 0, coveragedir=self.options.coveragedir,
+                source_address=(rpchost, 0))
         node.getnetworkinfo()
         self.stop_nodes()
 
@@ -57,12 +58,10 @@ class RPCBindTest(BitcoinTestFramework):
         have_ipv6 = test_ipv6_local()
         if not have_ipv6:
             self.log.warning("No IPv6 on this host, skipping tests that require IPv6")
-        # find the first non-loopback interface for testing
-        non_loopback_ip = None
-        for name,ip in all_interfaces():
-            if ip != '127.0.0.1':
-                non_loopback_ip = ip
-                break
+
+        # use a second loopback IP for testing
+        other_loopback_ip = '127.0.0.2'
+        self.log.info("Using IP %s for testing" % other_loopback_ip)
 
         defaultport = rpc_port(0)
 
@@ -90,18 +89,13 @@ class RPCBindTest(BitcoinTestFramework):
             self.run_bind_test(['127.0.0.1'], '127.0.0.1', ['127.0.0.1', '[::1]'],
                 [('127.0.0.1', defaultport), ('::1', defaultport)])
 
-        if non_loopback_ip is not None:
-            self.log.info("Using interface %s for testing" % non_loopback_ip)
+        # check only non-loopback interface
+        self.run_bind_test([other_loopback_ip], other_loopback_ip, [other_loopback_ip],
+            [(other_loopback_ip, defaultport)])
 
-            # check only non-loopback interface
-            self.run_bind_test([non_loopback_ip], non_loopback_ip, [non_loopback_ip],
-                [(non_loopback_ip, defaultport)])
-
-            # Check that with invalid rpcallowip, we are denied
-            self.run_allowip_test([non_loopback_ip], non_loopback_ip, defaultport)
-            assert_raises_rpc_error(-342, "non-JSON HTTP response with '403 Forbidden' from server", self.run_allowip_test, ['1.1.1.1'], non_loopback_ip, defaultport)
-        else:
-            self.log.warning("No non-loopback interface configured on this host, skpping tests that require this")
+        # Check that with invalid rpcallowip, we are denied
+        self.run_allowip_test([other_loopback_ip], other_loopback_ip, defaultport)
+        assert_raises_rpc_error(-342, "non-JSON HTTP response with '403 Forbidden' from server", self.run_allowip_test, ['1.1.1.1'], other_loopback_ip, defaultport)
 
 if __name__ == '__main__':
     RPCBindTest().main()

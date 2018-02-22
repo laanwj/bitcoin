@@ -66,7 +66,7 @@ class AuthServiceProxy():
     __id_count = 0
 
     # ensure_ascii: escape unicode as \uXXXX, passed to json.dumps
-    def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT, connection=None, ensure_ascii=True):
+    def __init__(self, service_url, service_name=None, timeout=HTTP_TIMEOUT, connection=None, ensure_ascii=True, source_address=None):
         self.__service_url = service_url
         self._service_name = service_name
         self.ensure_ascii = ensure_ascii  # can be toggled on the fly by tests
@@ -81,9 +81,9 @@ class AuthServiceProxy():
             # Callables re-use the connection of the original proxy
             self.__conn = connection
         elif self.__url.scheme == 'https':
-            self.__conn = http.client.HTTPSConnection(self.__url.hostname, port, timeout=timeout)
+            self.__conn = http.client.HTTPSConnection(self.__url.hostname, port, timeout=timeout, source_address=source_address)
         else:
-            self.__conn = http.client.HTTPConnection(self.__url.hostname, port, timeout=timeout)
+            self.__conn = http.client.HTTPConnection(self.__url.hostname, port, timeout=timeout, source_address=source_address)
 
     def __getattr__(self, name):
         if name.startswith('__') and name.endswith('__'):
