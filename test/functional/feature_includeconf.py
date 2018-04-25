@@ -16,7 +16,8 @@ Verify that:
 """
 import os
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import BitcoinTestFramework, assert_equal
+import tempfile
 
 class IncludeConfTest(BitcoinTestFramework):
     def setup_chain(self):
@@ -42,10 +43,15 @@ class IncludeConfTest(BitcoinTestFramework):
         assert subversion.endswith("main; relative)/")
 
         self.log.info("-includeconf cannot be used as command-line arg. subversion should still end with 'main; relative)/'")
-        self.restart_node(0, extra_args=["-includeconf=relative2.conf"])
+        self.stop_node(0)
+        with tempfile.SpooledTemporaryFile(max_size=2**16) as log_stderr:
+            self.start_node(0, extra_args=["-includeconf=relative2.conf"], stderr=log_stderr)
 
-        subversion = self.nodes[0].getnetworkinfo()["subversion"]
-        assert subversion.endswith("main; relative)/")
+            subversion = self.nodes[0].getnetworkinfo()["subversion"]
+            assert subversion.endswith("main; relative)/")
+            log_stderr.seek(0)
+            stderr = log_stderr.read().decode('utf-8').strip()
+            assert_equal(stderr, 'warning: -includeconf cannot be used from commandline; ignoring -includeconf=relative2.conf')
 
         self.log.info("-includeconf cannot be used recursively. subversion should end with 'main; relative)/'")
         with open(os.path.join(self.options.tmpdir, "node0", "relative.conf"), "a", encoding="utf8") as f:
