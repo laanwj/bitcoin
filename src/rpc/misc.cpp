@@ -19,6 +19,7 @@
 #include <timedata.h>
 #include <util.h>
 #include <utilstrencodings.h>
+#include <ui_interface.h>
 #include <warnings.h>
 
 #include <stdint.h>
@@ -439,6 +440,17 @@ static UniValue echo(const JSONRPCRequest& request)
     return request.params;
 }
 
+static UniValue alert(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1)
+        throw std::runtime_error(
+            "alert \"message\" ...\n"
+            "\nSend message to the user interface.\n"
+        );
+
+    return uiInterface.ThreadSafeMessageBox(request.params[0].get_str(), "Message from RPC", CClientUIInterface::MSG_WARNING);
+}
+
 // clang-format off
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         argNames
@@ -449,6 +461,7 @@ static const CRPCCommand commands[] =
     { "util",               "createmultisig",         &createmultisig,         {"nrequired","keys"} },
     { "util",               "verifymessage",          &verifymessage,          {"address","signature","message"} },
     { "util",               "signmessagewithprivkey", &signmessagewithprivkey, {"privkey","message"} },
+    { "util",               "alert",                  &alert,                  {"message"} },
 
     /* Not shown in help */
     { "hidden",             "setmocktime",            &setmocktime,            {"timestamp"}},
