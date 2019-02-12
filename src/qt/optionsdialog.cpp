@@ -346,24 +346,29 @@ void OptionsDialog::updateProxyValidationState()
     }
 }
 
+static std::string getProxyStr(OptionsModel *model, enum Network net)
+{
+    if (Optional<proxyType> proxy = model->node().getProxy(net)) {
+        return proxy->proxy.ToStringIP() + ":" + proxy->proxy.ToStringPort();
+    }
+    return "";
+}
+
 void OptionsDialog::updateDefaultProxyNets()
 {
     proxyType proxy;
     std::string strProxy;
     QString strDefaultProxyGUI;
 
-    model->node().getProxy(NET_IPV4, proxy);
-    strProxy = proxy.proxy.ToStringIP() + ":" + proxy.proxy.ToStringPort();
+    strProxy = getProxyStr(model, NET_IPV4);
     strDefaultProxyGUI = ui->proxyIp->text() + ":" + ui->proxyPort->text();
     (strProxy == strDefaultProxyGUI.toStdString()) ? ui->proxyReachIPv4->setChecked(true) : ui->proxyReachIPv4->setChecked(false);
 
-    model->node().getProxy(NET_IPV6, proxy);
-    strProxy = proxy.proxy.ToStringIP() + ":" + proxy.proxy.ToStringPort();
+    strProxy = getProxyStr(model, NET_IPV6);
     strDefaultProxyGUI = ui->proxyIp->text() + ":" + ui->proxyPort->text();
     (strProxy == strDefaultProxyGUI.toStdString()) ? ui->proxyReachIPv6->setChecked(true) : ui->proxyReachIPv6->setChecked(false);
 
-    model->node().getProxy(NET_ONION, proxy);
-    strProxy = proxy.proxy.ToStringIP() + ":" + proxy.proxy.ToStringPort();
+    strProxy = getProxyStr(model, NET_ONION);
     strDefaultProxyGUI = ui->proxyIp->text() + ":" + ui->proxyPort->text();
     (strProxy == strDefaultProxyGUI.toStdString()) ? ui->proxyReachTor->setChecked(true) : ui->proxyReachTor->setChecked(false);
 }

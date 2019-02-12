@@ -91,7 +91,7 @@ public:
         }
     }
     void setupServerArgs() override { return SetupServerArgs(); }
-    bool getProxy(Network net, proxyType& proxy_info) override { return GetProxy(net, proxy_info); }
+    Optional<proxyType> getProxy(Network net) override { return GetProxy(net); }
     size_t getNodeCount(CConnman::NumConnections flags) override
     {
         return g_connman ? g_connman->GetNodeCount(flags) : 0;

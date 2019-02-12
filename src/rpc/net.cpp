@@ -429,14 +429,13 @@ static UniValue GetNetworksInfo()
         enum Network network = static_cast<enum Network>(n);
         if(network == NET_UNROUTABLE || network == NET_INTERNAL)
             continue;
-        proxyType proxy;
         UniValue obj(UniValue::VOBJ);
-        GetProxy(network, proxy);
+        Optional<proxyType> proxy = GetProxy(network);
         obj.pushKV("name", GetNetworkName(network));
         obj.pushKV("limited", !IsReachable(network));
         obj.pushKV("reachable", IsReachable(network));
-        obj.pushKV("proxy", proxy.IsValid() ? proxy.proxy.ToStringIPPort() : std::string());
-        obj.pushKV("proxy_randomize_credentials", proxy.randomize_credentials);
+        obj.pushKV("proxy", proxy ? proxy->proxy.ToStringIPPort() : std::string());
+        obj.pushKV("proxy_randomize_credentials", proxy ? proxy->randomize_credentials : false);
         networks.push_back(obj);
     }
     return networks;

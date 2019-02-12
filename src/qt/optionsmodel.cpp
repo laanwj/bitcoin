@@ -476,11 +476,10 @@ bool OptionsModel::getProxySettings(QNetworkProxy& proxy) const
 {
     // Directly query current base proxy, because
     // GUI settings can be overridden with -proxy.
-    proxyType curProxy;
-    if (m_node.getProxy(NET_IPV4, curProxy)) {
+    if (Optional<proxyType> curProxy = m_node.getProxy(NET_IPV4)) {
         proxy.setType(QNetworkProxy::Socks5Proxy);
-        proxy.setHostName(QString::fromStdString(curProxy.proxy.ToStringIP()));
-        proxy.setPort(curProxy.proxy.GetPort());
+        proxy.setHostName(QString::fromStdString(curProxy->proxy.ToStringIP()));
+        proxy.setPort(curProxy->proxy.GetPort());
 
         return true;
     }

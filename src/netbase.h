@@ -12,6 +12,7 @@
 #include <compat.h>
 #include <netaddress.h>
 #include <serialize.h>
+#include <optional.h>
 
 #include <stdint.h>
 #include <string>
@@ -40,7 +41,7 @@ public:
 enum Network ParseNetwork(std::string net);
 std::string GetNetworkName(enum Network net);
 bool SetProxy(enum Network net, const proxyType &addrProxy);
-bool GetProxy(enum Network net, proxyType &proxyInfoOut);
+Optional<proxyType> GetProxy(enum Network net);
 bool IsProxy(const CNetAddr &addr);
 bool SetNameProxy(const proxyType &addrProxy);
 bool HaveNameProxy();

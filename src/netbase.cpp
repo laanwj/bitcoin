@@ -563,13 +563,12 @@ bool SetProxy(enum Network net, const proxyType &addrProxy) {
     return true;
 }
 
-bool GetProxy(enum Network net, proxyType &proxyInfoOut) {
+Optional<proxyType> GetProxy(enum Network net) {
     assert(net >= 0 && net < NET_MAX);
     LOCK(cs_proxyInfos);
     if (!proxyInfo[net].IsValid())
-        return false;
-    proxyInfoOut = proxyInfo[net];
-    return true;
+        return nullopt;
+    return proxyInfo[net];
 }
 
 bool SetNameProxy(const proxyType &addrProxy) {
