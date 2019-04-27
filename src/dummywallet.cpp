@@ -38,6 +38,9 @@ void DummyWalletInit::AddWalletOptions(ArgsManager& argsman) const
         "-paytxfee=<amt>",
         "-rescan",
         "-salvagewallet",
+#ifdef ENABLE_EXTERNAL_SIGNER
+        "-signer=<cmd>",
+#endif
         "-spendzeroconfchange",
         "-txconfirmtarget=<n>",
         "-wallet=<path>",

@@ -251,6 +251,7 @@ BITCOIN_CORE_H = \
   wallet/crypter.h \
   wallet/db.h \
   wallet/dump.h \
+  wallet/externalsigner.h \
   wallet/feebumper.h \
   wallet/fees.h \
   wallet/ismine.h \
@@ -365,6 +366,7 @@ libbitcoin_wallet_a_SOURCES = \
   wallet/crypter.cpp \
   wallet/db.cpp \
   wallet/dump.cpp \
+  wallet/externalsigner.cpp \
   wallet/feebumper.cpp \
   wallet/fees.cpp \
   wallet/interfaces.cpp \
