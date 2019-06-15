@@ -137,3 +137,7 @@ db4/
 osx_volname
 dist/
 *.background.tiff
+
+# Rust
+src/rusty/Cargo.lock
+src/rusty/out
