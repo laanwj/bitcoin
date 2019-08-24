@@ -8,3 +8,13 @@ edition = "2018"
 
 [lib]
 crate-type = ["staticlib"]
+
+# Always do overflow checks and allow panics to unwind so that even if
+# we have a crash bug we don't take down the rest of Bitcoin Core with us
+[profile.release]
+panic = "unwind"
+overflow-checks = true
+
+[profile.dev]
+panic = "unwind"
+overflow-checks = true

@@ -651,12 +651,13 @@ CTAES_DIST += crypto/ctaes/test.c
 
 RUSTY_DIST =
 RUSTY_DIST += rusty/Cargo.toml
-RUSTY_DIST += rusty/src/lib.rs
+RUSTY_DIST += rusty/src/lib.rs rusty/src/bridge.rs rusty/src/rest_downloader.rs
 
 BITCOIN_CORE_H += rusty/src/rust_bridge.h
 
 if ENABLE_RUSTY
 LIBBITCOIN_RUST_LIBS += $(LIBBITCOIN_RUSTY)
+libbitcoin_server_a_SOURCES += rusty/src/cpp_bridge.cpp
 
 # TODO: Teach Cargo how to accept a target filename and upstream
 # See https://github.com/rust-lang/rust/issues/43749
@@ -675,7 +676,8 @@ $(RUSTY_CHECK):
 	cd $(srcdir)/rusty && $(CARGO) test --release --target=$(RUST_TARGET) --target-dir=$(abs_builddir)/rusty/out
 
 CLEANFILES += $(LIBBITCOIN_RUSTY)
-
+else
+RUSTY_DIST += rusty/src/cpp_bridge.cpp
 endif
 
 CLEANFILES += $(EXTRA_LIBRARIES)
