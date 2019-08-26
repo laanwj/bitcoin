@@ -432,7 +432,7 @@ endif
 endif
 qt_bitcoin_qt_LDADD += $(CRYPTO_LIBS)
 qt_bitcoin_qt_LDADD += $(LIBBITCOIN_RUST_LIBS) $(DL_LIBS)
-qt_bitcoin_qt_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(QT_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+qt_bitcoin_qt_LDFLAGS = -Wl,--start-group $(RELDFLAGS) $(AM_LDFLAGS) $(QT_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 qt_bitcoin_qt_LIBTOOLFLAGS = $(AM_LIBTOOLFLAGS) --tag CXX
 
 #locale/foo.ts -> locale/foo.qm
