@@ -651,7 +651,7 @@ CTAES_DIST += crypto/ctaes/test.c
 
 RUSTY_DIST =
 RUSTY_DIST += rusty/Cargo.toml
-RUSTY_DIST += rusty/src/lib.rs rusty/src/bridge.rs rusty/src/rest_downloader.rs
+RUSTY_DIST += rusty/src/lib.rs rusty/src/bridge.rs rusty/src/rest_downloader.rs rusty/src/dns_headers.rs
 
 BITCOIN_CORE_H += rusty/src/rust_bridge.h
 

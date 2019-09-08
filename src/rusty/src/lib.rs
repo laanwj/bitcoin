@@ -1,6 +1,7 @@
 mod bridge;
 use bridge::*;
 mod rest_downloader;
+mod dns_headers;
 
 use std::time::{Duration, Instant};
 

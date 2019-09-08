@@ -373,6 +373,7 @@ void SetupServerArgs()
     gArgs.AddArg("-blocksonly", strprintf("Whether to reject transactions from network peers. Transactions from the wallet, RPC and relay whitelisted inbound peers are not affected. (default: %u)", DEFAULT_BLOCKSONLY), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
 #if ENABLE_RUSTY
     gArgs.AddArg("-blockfetchrest=<uri>", "A REST endpoint from which to fetch blocks. Acts as a redundant backup for P2P connectivity. eg http://cloudflare.deanonymizingseed.com/rest/", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+    gArgs.AddArg("-headersfetchdns=<domain>", "A domain name from which to fetch headers. eg bitcoinheaders.net", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
 #endif
     gArgs.AddArg("-conf=<file>", strprintf("Specify configuration file. Relative paths will be prefixed by datadir location. (default: %s)", BITCOIN_CONF_FILENAME), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     gArgs.AddArg("-datadir=<dir>", "Specify data directory", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
@@ -1836,6 +1837,9 @@ bool AppInitMain(InitInterfaces& interfaces)
 #if ENABLE_RUSTY
     for (const std::string& uri : gArgs.GetArgs("-blockfetchrest")) {
         rust_block_fetch::init_fetch_rest_blocks(uri.c_str());
+    }
+    for (const std::string& domain : gArgs.GetArgs("-headersfetchdns")) {
+        rust_block_fetch::init_fetch_dns_headers(domain.c_str());
     }
 #endif
 
