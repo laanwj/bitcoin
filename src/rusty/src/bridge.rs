@@ -29,6 +29,67 @@ extern "C" {
 
     /// Gets the hash of a given CBlockIndex* pointer
     fn rusty_IndexToHash(index: *const c_void) -> *const u8;
+
+    // Utilities for logging, wrapped in a macro below.
+
+    #[allow(dead_code)]
+    /// Return whether a given category should be logged
+    pub fn rusty_LogAcceptCategory(cat: u32) -> bool;
+
+    #[allow(dead_code)]
+    /// Log a message (unconditionally)
+    pub fn rusty_LogPrintStr(msg: *const u8, len: usize);
+}
+
+/// Log a message to the debug log (unconditionally)
+#[allow(unused_macros)]
+macro_rules! log {
+    ($($arg:tt)+) => ({
+        use crate::bridge::rusty_LogPrintStr;
+        let msg = format!($($arg)+);
+        unsafe { rusty_LogPrintStr(msg.as_ptr(), msg.len()); }
+    })
+}
+
+/// Categories for logging using log_cat!
+/// These must match `LogFlags` in `logging.h`.
+#[allow(dead_code)]
+#[repr(u32)]
+pub enum LogFlags {
+    NET         = (1 <<  0),
+    TOR         = (1 <<  1),
+    MEMPOOL     = (1 <<  2),
+    HTTP        = (1 <<  3),
+    BENCH       = (1 <<  4),
+    ZMQ         = (1 <<  5),
+    DB          = (1 <<  6),
+    RPC         = (1 <<  7),
+    ESTIMATEFEE = (1 <<  8),
+    ADDRMAN     = (1 <<  9),
+    SELECTCOINS = (1 << 10),
+    REINDEX     = (1 << 11),
+    CMPCTBLOCK  = (1 << 12),
+    RAND        = (1 << 13),
+    PRUNE       = (1 << 14),
+    PROXY       = (1 << 15),
+    MEMPOOLREJ  = (1 << 16),
+    LIBEVENT    = (1 << 17),
+    COINDB      = (1 << 18),
+    QT          = (1 << 19),
+    LEVELDB     = (1 << 20),
+}
+
+/// Log a message to the debug log (with category)
+#[allow(unused_macros)]
+macro_rules! log_cat {
+    ($cat:expr, $($arg:tt)+) => ({
+        use crate::bridge::{rusty_LogPrintStr,rusty_LogAcceptCategory};
+        let cat = $cat;
+        if unsafe { rusty_LogAcceptCategory(cat as u32) } {
+            let msg = format!($($arg)+);
+            unsafe { rusty_LogPrintStr(msg.as_ptr(), msg.len()); }
+        }
+    })
 }
 
 #[allow(dead_code)]

@@ -1,3 +1,4 @@
+#[macro_use]
 mod bridge;
 use bridge::*;
 mod rest_downloader;

@@ -144,4 +144,14 @@ const void* rusty_ProviderStateGetNextDownloads(void* providerindexvoid, bool ha
     return blocks.empty() ? nullptr : blocks[0];
 }
 
+bool rusty_LogAcceptCategory(uint32_t cat) {
+    return LogInstance().WillLogCategory((BCLog::LogFlags) cat);
+}
+
+void rusty_LogPrintStr(const char *msg, size_t len) {
+    if (LogInstance().Enabled()) {
+        LogInstance().LogPrintStr(std::string((const char*)msg, len));
+    }
+}
+
 }
