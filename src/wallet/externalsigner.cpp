@@ -51,7 +51,7 @@ bool ExternalSigner::Enumerate(const std::string& command, std::vector<ExternalS
 
 UniValue ExternalSigner::getDescriptors(int account)
 {
-    return runCommandParseJSON(m_command + " --fingerprint \"" + m_fingerprint + "\"" + (m_mainnet ? "" : " --testnet ") + " getdescriptors --account " + strprintf("%d", account));
+    return RunCommandParseJSON(m_command + " --fingerprint \"" + m_fingerprint + "\"" + (m_mainnet ? "" : " --testnet ") + " getdescriptors --account " + strprintf("%d", account));
 }
 
 #endif
