@@ -3308,7 +3308,8 @@ bool PeerLogicValidation::ProcessMessages(CNode* pfrom, std::atomic<bool>& inter
     if (!msg.m_valid_header)
     {
         LogPrint(BCLog::NET, "PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(msg.m_command), pfrom->GetId());
-        return fMoreWork;
+        pfrom->fDisconnect = true;
+        return false;
     }
     const std::string& strCommand = msg.m_command;
 
@@ -3321,7 +3322,8 @@ bool PeerLogicValidation::ProcessMessages(CNode* pfrom, std::atomic<bool>& inter
     {
         LogPrint(BCLog::NET, "%s(%s, %u bytes): CHECKSUM ERROR peer=%d\n", __func__,
            SanitizeString(strCommand), nMessageSize, pfrom->GetId());
-        return fMoreWork;
+        pfrom->fDisconnect = true;
+        return false;
     }
 
     // Process message
@@ -3354,11 +3356,14 @@ bool PeerLogicValidation::ProcessMessages(CNode* pfrom, std::atomic<bool>& inter
         } else {
             PrintExceptionContinue(&e, "ProcessMessages()");
         }
+        pfrom->fDisconnect = true;
     }
     catch (const std::exception& e) {
         PrintExceptionContinue(&e, "ProcessMessages()");
+        pfrom->fDisconnect = true;
     } catch (...) {
         PrintExceptionContinue(nullptr, "ProcessMessages()");
+        pfrom->fDisconnect = true;
     }
 
     if (!fRet) {
