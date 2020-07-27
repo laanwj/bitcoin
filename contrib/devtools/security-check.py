@@ -53,13 +53,19 @@ def get_ELF_program_headers(executable):
                 ofs_offset = line.find('Offset')
                 ofs_flags = line.find('Flg')
                 ofs_align = line.find('Align')
-                if ofs_typ == -1 or ofs_offset == -1 or ofs_flags == -1 or ofs_align  == -1:
+                ofs_virtaddr = line.find('VirtAddr')
+                ofs_physaddr = line.find('PhysAddr')
+                ofs_memsiz = line.find('MemSiz')
+                if (ofs_typ == -1 or ofs_offset == -1 or ofs_flags == -1 or ofs_align == -1 or
+                    ofs_physaddr == -1 or ofs_virtaddr == -1 or ofs_memsiz == -1):
                     raise ValueError('Cannot parse elfread -lW output')
             elif count > 1:
                 typ = line[ofs_typ:ofs_offset].rstrip()
                 if not typ.startswith(' '): # skip [Reguesting ...]
                     flags = line[ofs_flags:ofs_align].rstrip()
-                    headers.append((typ, flags, []))
+                    virtaddr = int(line[ofs_virtaddr:ofs_physaddr].rstrip(), 0)
+                    memsiz = int(line[ofs_memsiz:ofs_flags].rstrip(), 0)
+                    headers.append((typ, flags, virtaddr, memsiz, []))
             count += 1
 
         if line.startswith(' Section to Segment mapping:'):
@@ -76,7 +82,7 @@ def get_ELF_program_headers(executable):
             elif count > 1:
                 segment = int(line[ofs_segment:ofs_sections].strip())
                 sections = line[ofs_sections:].strip().split()
-                headers[segment][2].extend(sections)
+                headers[segment][4].extend(sections)
             count += 1
     return headers
 
@@ -86,7 +92,7 @@ def check_ELF_NX(executable) -> bool:
     '''
     have_wx = False
     have_gnu_stack = False
-    for (typ, flags, _) in get_ELF_program_headers(executable):
+    for (typ, flags, _, _, _) in get_ELF_program_headers(executable):
         if typ == 'GNU_STACK':
             have_gnu_stack = True
         if 'W' in flags and 'E' in flags: # section is both writable and executable
@@ -100,7 +106,7 @@ def check_ELF_RELRO(executable) -> bool:
     Dynamic section must have BIND_NOW flag
     '''
     have_gnu_relro = False
-    for (typ, flags, _) in get_ELF_program_headers(executable):
+    for (typ, flags, _, _, _) in get_ELF_program_headers(executable):
         # Note: not checking flags == 'R': here as linkers set the permission differently
         # This does not affect security: the permission flags of the GNU_RELRO program
         # header are ignored, the PT_LOAD header determines the effective permissions.
@@ -168,10 +174,14 @@ def check_ELF_separate_code(executable):
         '.data': 'RW',
         '.bss': 'RW',
     }
+
+    retval = True
+
     # For all LOAD program headers get mapping to the list of sections,
     # and for each section, remember the flags of the associated program header.
     flags_per_section = {}
-    for (typ, flags, sections) in get_ELF_program_headers(executable):
+    headers = get_ELF_program_headers(executable)
+    for (typ, flags, _, _, sections) in headers:
         if typ == 'LOAD':
             for section in sections:
                 assert(section not in flags_per_section)
@@ -181,8 +191,24 @@ def check_ELF_separate_code(executable):
     for (section, flags) in flags_per_section.items():
         if section in EXPECTED_FLAGS:
             if EXPECTED_FLAGS[section] != flags:
-                return False
-    return True
+                print(f"Section {section} flags {flags} != {EXPECTED_FLAGS[section]}", file=sys.stderr)
+                retval = False
+
+    # Size of one page (might be a larger on some platforms)
+    PAGESIZE = 4096
+    # Check that virtual memory pages with different permissions don't overlap
+    flags_per_page = {}
+    for (typ, flags, virtaddr, memsz, _) in headers:
+        if typ == 'LOAD':
+            firstpg = virtaddr // PAGESIZE
+            lastpg = (virtaddr + memsz + PAGESIZE - 1) // PAGESIZE
+            for pg in firstpg, lastpg:
+                if pg in flags_per_page:
+                    if flags_per_page.setdefault(pg, flags) != flags:
+                        print(f"Page 0x{pg*PAGE_SIZE:016x} flags {flags} collide with other flags {flags_per_page[pg]} for same page", file=sys.stderr)
+                        retval = False
+
+    return retval
 
 def get_PE_dll_characteristics(executable) -> int:
     '''Get PE DllCharacteristics bits'''
