@@ -9,7 +9,7 @@ In progress
 Documents and notes
 --------------------
 
-- [Reducing bitcoind memory usage](https://gist.github.com/laanwj/efe29c7661ce9b6620a7).
+- [Reducing bitcoind memory usage (moved in-repo)](https://github.com/bitcoin/bitcoin/blob/master/doc/reduce-memory.md)
 
 Scripts
 --------
