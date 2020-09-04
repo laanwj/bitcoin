@@ -21,6 +21,7 @@
 #include <scheduler.h>
 #include <util/strencodings.h>
 #include <util/translation.h>
+#include <util/trace.h>
 
 #ifdef WIN32
 #include <string.h>
@@ -2973,7 +2974,10 @@ bool CConnman::NodeFullyConnected(const CNode* pnode)
 void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
 {
     size_t nMessageSize = msg.data.size();
-    LogPrint(BCLog::NET, "sending %s (%d bytes) peer=%d\n",  SanitizeString(msg.m_type), nMessageSize, pnode->GetId());
+    auto sanitizedType = SanitizeString(msg.m_type);
+
+    LogPrint(BCLog::NET, "sending %s (%d bytes) peer=%d\n", sanitizedType, nMessageSize, pnode->GetId());
+    TRACE4(net, push_message, sanitizedType.c_str(), msg.data, nMessageSize, pnode->GetId());
 
     // make sure we use the appropriate network transport format
     std::vector<unsigned char> serializedHeader;
