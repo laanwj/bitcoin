@@ -14,6 +14,10 @@ Documents and notes
 Scripts
 --------
 
+Mostly, scripts related to Bitcoin Core maintenance can be found in the [bitcoin-maintainer-tools]((https://github.com/bitcoin-core/bitcoin-maintainer-tools) repository.
+
+Some random other snippets:
+
 - [Start bitcoind in a screen in a debugger](https://gist.github.com/laanwj/29bc141fb8d10608651c).
 - [Measure compilation speed](https://gist.github.com/laanwj/108877a28ec03836568a) as well
  as other statistics such as maximum memory usage per compilation unit. Original
@@ -24,5 +28,5 @@ Scripts
   collected bitcoin block database troubleshooting tools (from Python).
 - [bitcoin-submittx](https://github.com/laanwj/bitcoin-submittx):
   stand-alone Bitcoin transaction submission tool (in Python).
-- [JSON-RPC batching example](https://gist.github.com/laanwj/f2e0238bd151d5365c07bdd03467588b).
+- [JSON-RPC batching example](https://gist.github.com/laanwj/f2e0238bd151d5365c07bdd03467588b), there's also a [functional test](https://github.com/bitcoin/bitcoin/blob/master/test/functional/interface_rpc.py#L38) for batching.
 
