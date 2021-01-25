@@ -14,7 +14,7 @@ Documents and notes
 Scripts
 --------
 
-Mostly, scripts related to Bitcoin Core maintenance can be found in the [bitcoin-maintainer-tools]((https://github.com/bitcoin-core/bitcoin-maintainer-tools) repository.
+Mostly, scripts related to Bitcoin Core maintenance can be found in the [bitcoin-maintainer-tools](https://github.com/bitcoin-core/bitcoin-maintainer-tools) repository.
 
 Some random other snippets:
 
