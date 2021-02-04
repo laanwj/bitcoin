@@ -143,6 +143,20 @@ def check_ELF_separate_code(executable):
                 return False
     return True
 
+def check_ELF_control_flow_instrumentation(executable) -> bool:
+
+    elf = pixie.load(executable)
+
+    if elf.hdr.e_machine is not pixie.EM_X86_64:
+        return True
+
+    stdout = run_command([OBJDUMP_CMD, '-d', '--section=.text', executable])
+
+    for line in stdout.splitlines():
+        if 'endbr64' in line:
+            return True
+    return False
+
 def get_PE_dll_characteristics(executable) -> int:
     '''Get PE DllCharacteristics bits'''
     stdout = run_command([OBJDUMP_CMD, '-x',  executable])
@@ -183,6 +197,14 @@ def check_PE_NX(executable) -> bool:
     '''NX: DllCharacteristics bit 0x100 signifies nxcompat (DEP)'''
     bits = get_PE_dll_characteristics(executable)
     return (bits & IMAGE_DLL_CHARACTERISTICS_NX_COMPAT) == IMAGE_DLL_CHARACTERISTICS_NX_COMPAT
+
+def check_PE_control_flow_instrumentation(executable) -> bool:
+    stdout = run_command([OBJDUMP_CMD, '-d', '--section=.text', executable])
+
+    for line in stdout.splitlines():
+        if 'endbr64' in line:
+            return True
+    return False
 
 def get_MACHO_executable_flags(executable) -> List[str]:
     stdout = run_command([OTOOL_CMD, '-vh', executable])
@@ -257,12 +279,14 @@ CHECKS = {
     ('RELRO', check_ELF_RELRO),
     ('Canary', check_ELF_Canary),
     ('separate_code', check_ELF_separate_code),
+    ('control_flow', check_ELF_control_flow_instrumentation)
 ],
 'PE': [
     ('DYNAMIC_BASE', check_PE_DYNAMIC_BASE),
     ('HIGH_ENTROPY_VA', check_PE_HIGH_ENTROPY_VA),
     ('NX', check_PE_NX),
-    ('RELOC_SECTION', check_PE_RELOC_SECTION)
+    ('RELOC_SECTION', check_PE_RELOC_SECTION),
+    ('control_flow', check_PE_control_flow_instrumentation)
 ],
 'MACHO': [
     ('PIE', check_MACHO_PIE),
