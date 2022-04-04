@@ -64,6 +64,27 @@ Notificator::~Notificator()
 #endif
 }
 
+/** If no icon specified, return default icon based on class. */
+static QIcon defaultIconForClass(Notificator::Class cls, const QIcon &icon)
+{
+    if(icon.isNull())
+    {
+        QStyle::StandardPixmap sicon = QStyle::SP_MessageBoxQuestion;
+        switch(cls)
+        {
+        case Notificator::Information: sicon = QStyle::SP_MessageBoxInformation; break;
+        case Notificator::Warning: sicon = QStyle::SP_MessageBoxWarning; break;
+        case Notificator::Critical: sicon = QStyle::SP_MessageBoxCritical; break;
+        default: break;
+        }
+        return QApplication::style()->standardIcon(sicon);
+    }
+    else
+    {
+        return icon;
+    }
+}
+
 #ifdef USE_DBUS
 
 // Loosely based on https://www.qtcentre.org/archive/index.php/t-25879.html
@@ -175,24 +196,8 @@ void Notificator::notifyDBus(Class cls, const QString &title, const QString &tex
     // Hints
     QVariantMap hints;
 
-    // If no icon specified, set icon based on class
-    QIcon tmpicon;
-    if(icon.isNull())
-    {
-        QStyle::StandardPixmap sicon = QStyle::SP_MessageBoxQuestion;
-        switch(cls)
-        {
-        case Information: sicon = QStyle::SP_MessageBoxInformation; break;
-        case Warning: sicon = QStyle::SP_MessageBoxWarning; break;
-        case Critical: sicon = QStyle::SP_MessageBoxCritical; break;
-        default: break;
-        }
-        tmpicon = QApplication::style()->standardIcon(sicon);
-    }
-    else
-    {
-        tmpicon = icon;
-    }
+    // Icon
+    QIcon tmpicon = defaultIconForClass(cls, icon);
     hints["icon_data"] = FreedesktopImage::toVariant(tmpicon.pixmap(FREEDESKTOP_NOTIFICATION_ICON_SIZE).toImage());
     args.append(hints);
 
@@ -204,16 +209,9 @@ void Notificator::notifyDBus(Class cls, const QString &title, const QString &tex
 }
 #endif
 
-void Notificator::notifySystray(Class cls, const QString &title, const QString &text, int millisTimeout)
+void Notificator::notifySystray(Class cls, const QString &title, const QString &text, const QIcon &icon, int millisTimeout)
 {
-    QSystemTrayIcon::MessageIcon sicon = QSystemTrayIcon::NoIcon;
-    switch(cls) // Set icon based on class
-    {
-    case Information: sicon = QSystemTrayIcon::Information; break;
-    case Warning: sicon = QSystemTrayIcon::Warning; break;
-    case Critical: sicon = QSystemTrayIcon::Critical; break;
-    }
-    trayIcon->showMessage(title, text, sicon, millisTimeout);
+    trayIcon->showMessage(title, text, defaultIconForClass(cls, icon), millisTimeout);
 }
 
 #ifdef Q_OS_MAC
@@ -234,7 +232,7 @@ void Notificator::notify(Class cls, const QString &title, const QString &text, c
         break;
 #endif
     case QSystemTray:
-        notifySystray(cls, title, text, millisTimeout);
+        notifySystray(cls, title, text, icon, millisTimeout);
         break;
 #ifdef Q_OS_MAC
     case UserNotificationCenter:
