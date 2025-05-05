@@ -13,6 +13,7 @@ Example usage:
 import sys
 
 import lief
+import re
 
 # Debian 11 (Bullseye) EOL: 2026. https://wiki.debian.org/LTS
 #
@@ -278,6 +279,53 @@ def check_PE_subsystem_version(binary) -> bool:
         return True
     return False
 
+MANIFEST_TEMPLATE = ('^' + re.escape("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity
+      type="win32"
+      name="org.bitcoincore.<BINARY_NAME>"
+      version="<VERSION>"
+  />
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false"></requestedExecutionLevel>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>
+""").replace("<BINARY_NAME>", r'([a-z\-_]+)')
+    .replace("<VERSION>", r'(\d+\.\d+\.\d+\.\d+)') + r'\Z')
+
+def check_PE_application_manifest(binary) -> bool:
+    if not binary.has_resources:
+        # No resources at all.
+        return False
+
+    # Find MANIFEST type in resource root.
+    root = binary.resources
+    try:
+        manifest_node = next(i for i in root.childs if i.id == int(lief.PE.RESOURCE_TYPES.MANIFEST))
+    except StopIteration:
+        # No resource of type manifest.
+        return False
+
+    # traverse two levels: id, language
+    if len(manifest_node.childs) != 1 or manifest_node.childs[0].id != 1:
+        # Must have one child with ID 1 (CREATEPROCESS_MANIFEST_RESOURCE_ID).
+        return False
+
+    if len(manifest_node.childs[0].childs) != 1:
+        # Cannot have language-dependent binary manifest.
+        return False
+
+    manifest_resource = manifest_node.childs[0].childs[0]
+    manifest = bytes(manifest_resource.content).decode("utf8")
+
+    # check against template
+    m = re.match(MANIFEST_TEMPLATE, manifest)
+    return m is not None
+
 def check_ELF_interpreter(binary) -> bool:
     expected_interpreter = ELF_INTERPRETER_NAMES[binary.header.machine_type][binary.abstract.header.endianness]
 
@@ -307,6 +355,7 @@ lief.EXE_FORMATS.MACHO: [
 lief.EXE_FORMATS.PE: [
     ('DYNAMIC_LIBRARIES', check_PE_libraries),
     ('SUBSYSTEM_VERSION', check_PE_subsystem_version),
+    ('APPLICATION_MANIFEST', check_PE_application_manifest),
 ]
 }
 
