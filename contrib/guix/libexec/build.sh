@@ -40,44 +40,12 @@ EOF
 # Environment Setup #
 #####################
 
-# Given a package name and an output name, return the path of that output in our
-# current guix environment
-store_path() {
-    grep --extended-regexp "/[^-]{32}-${1}-[^-]+${2:+-${2}}" "${GUIX_ENVIRONMENT}/manifest" \
-        | head --lines=1 \
-        | sed --expression='s|\x29*$||' \
-              --expression='s|^[[:space:]]*"||' \
-              --expression='s|"[[:space:]]*$||'
-}
-
-# Set environment variables to point the NATIVE toolchain to the right
-# includes/libs
-NATIVE_GCC="$(store_path gcc-toolchain)"
-
 unset LIBRARY_PATH
 unset CPATH
 unset C_INCLUDE_PATH
 unset CPLUS_INCLUDE_PATH
 unset OBJC_INCLUDE_PATH
 unset OBJCPLUS_INCLUDE_PATH
-
-export LIBRARY_PATH="${NATIVE_GCC}/lib"
-
-# Set environment variables to point the CROSS toolchain to the right
-# includes/libs for $HOST
-CROSS_GLIBC="$(store_path "mingw-w64-x86_64-winpthreads")"
-CROSS_GCC="$(store_path "gcc-cross-${HOST}")"
-CROSS_GCC_LIB_STORE="$(store_path "gcc-cross-${HOST}" lib)"
-CROSS_GCC_LIBS=( "${CROSS_GCC_LIB_STORE}/lib/gcc/${HOST}"/* ) # This expands to an array of directories...
-CROSS_GCC_LIB="${CROSS_GCC_LIBS[0]}" # ...we just want the first one (there should only be one)
-
-# The search path ordering is generally:
-#    1. gcc-related search paths
-#    2. libc-related search paths
-#    2. kernel-header-related search paths (not applicable to mingw-w64 hosts)
-export CROSS_C_INCLUDE_PATH="${CROSS_GCC_LIB}/include:${CROSS_GCC_LIB}/include-fixed:${CROSS_GLIBC}/include"
-export CROSS_CPLUS_INCLUDE_PATH="${CROSS_GCC}/include/c++:${CROSS_GCC}/include/c++/${HOST}:${CROSS_GCC}/include/c++/backward:${CROSS_C_INCLUDE_PATH}"
-export CROSS_LIBRARY_PATH="${CROSS_GCC_LIB_STORE}/lib:${CROSS_GCC_LIB}:${CROSS_GLIBC}/lib"
 
 EXTRA_CXXFLAGS="-fdump-tree-all"
 
