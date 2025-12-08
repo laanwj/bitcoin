@@ -79,17 +79,16 @@ export CROSS_C_INCLUDE_PATH="${CROSS_GCC_LIB}/include:${CROSS_GCC_LIB}/include-f
 export CROSS_CPLUS_INCLUDE_PATH="${CROSS_GCC}/include/c++:${CROSS_GCC}/include/c++/${HOST}:${CROSS_GCC}/include/c++/backward:${CROSS_C_INCLUDE_PATH}"
 export CROSS_LIBRARY_PATH="${CROSS_GCC_LIB_STORE}/lib:${CROSS_GCC_LIB}:${CROSS_GLIBC}/lib"
 
-HOST_CXXFLAGS=$(find /gnu/store -maxdepth 1 -mindepth 1 -type d -exec echo -n " -ffile-prefix-map={}=/usr" \;)
-
 EXTRA_CXXFLAGS="-fdump-tree-all"
 
-OUT_OBJ=test.cpp.obj
+for variant in original reverted; do
+    OUT_OBJ=test-${variant}.cpp.obj
 
-# removing -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 or using -D_FORTIFY_SOURCE=2 will result in determinism
-x86_64-w64-mingw32-g++ -DNOMINMAX -DWIN32 -DWIN32_LEAN_AND_MEAN -D_MT -D_WIN32_IE=0x0A00 -D_WIN32_WINNT=0x0A00 -D_WINDOWS \
-${HOST_CXXFLAGS} \
-${EXTRA_CXXFLAGS} \
--O2 -g -fvisibility=hidden -fstack-reuse=none -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -std=c++20 \
--MD -MT ${OUT_OBJ} -MF ${OUT_OBJ} -save-temps -o ${OUT_OBJ} -c \
-/bitcoin/test.cpp && \
-sha256sum ${OUT_OBJ}
+    # removing -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 or using -D_FORTIFY_SOURCE=2 will result in determinism
+    x86_64-w64-mingw32-g++ -DNOMINMAX -DWIN32 -DWIN32_LEAN_AND_MEAN -D_MT -D_WIN32_IE=0x0A00 -D_WIN32_WINNT=0x0A00 -D_WINDOWS \
+        ${EXTRA_CXXFLAGS} \
+        -O2 -g -fvisibility=hidden -fstack-reuse=none -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -std=c++20 \
+        -MD -MT ${OUT_OBJ} -MF ${OUT_OBJ} -save-temps -o ${OUT_OBJ} -c \
+        /bitcoin/test-${variant}.i && \
+        sha256sum ${OUT_OBJ}
+done
